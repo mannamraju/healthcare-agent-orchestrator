@@ -1,8 +1,10 @@
+# Azure and local development
 .azure
 .ipynb_checkpoints
 .venv
 .conda
 .env
+.env.production
 __pycache__
 democlient/build
 node_modules
@@ -13,11 +15,51 @@ obj
 appsettings.json
 output
 .DS_Store
+Thumbs.db
 
+# Testing and coverage
 .pytest_cache
 .coverage
 
+# Project specific directories
 src/public/output_data
 infra/config
 data
-.env.production
+
+# Terraform files
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfplan
+.terraformrc
+terraform.rc
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraform.lock.hcl
+tfplan*
+terraform-*.json
+.terraform.d/
+
+# Scripts
+*.ps1
+*.sh
+*.cmd
+*.bat
+scripts/
+bash/
+tools/
+
+# Logs
+*.log
+logs/
+
+# Backups
+*.bak
+*.backup
+*backup*
+backups/
+*.swp
+*~
