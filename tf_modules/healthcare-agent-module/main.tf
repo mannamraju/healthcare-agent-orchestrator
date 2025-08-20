@@ -11,9 +11,12 @@ resource "azurerm_healthbot" "healthcare_agent" {
   location            = var.location
   sku_name            = var.bot_sku_name
   
-  # User assigned identity is not configured directly in the healthbot resource
-  # We'll need to use a separate azurerm_user_assigned_identity resource
-  # and then link it using a service principal
+  identity {
+    type = "UserAssigned"
+    identity_ids = [
+      lookup(var.service_principal_ids, each.key, "")
+    ]
+  }
   
   tags = merge(var.tags, {
     HealthcareAgentTemplate = "MultiAgentCollaboration"
