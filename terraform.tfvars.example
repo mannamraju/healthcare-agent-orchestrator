@@ -1,0 +1,34 @@
+# Healthcare Agent Orchestrator - Example Variables File
+# Rename to terraform.tfvars and update values as needed
+
+# Core Configuration
+subscription_id     = "your-subscription-id"
+resource_group_name = "your-resource-group"
+environment_name    = "dev"
+location            = "westus"
+
+# OpenAI Model Configuration
+openai_model        = "gpt-4o;2024-08-06"
+openai_model_capacity = 100
+openai_model_sku    = "GlobalStandard"
+enable_openai       = true
+
+# Networking Configuration
+vnet_address_space  = "10.0.0.0/16"
+subnet_prefix       = "10.0.0.0/24"
+
+# Principal Configuration - Set your Azure AD object ID to get access
+# my_principal_id   = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+# my_principal_type = "User"  # User or ServicePrincipal
+
+# Optional: Custom Resource Names
+# ai_services_name  = "custom-ai-services-name"
+# key_vault_name    = "custom-keyvault-name"
+# app_service_name  = "custom-app-service-name"
+
+# Optional: GPU Configuration for Radiology Analysis
+# include_gpu_models = true
+# gpu_instance_type  = "Standard_NC24ads_A100_v4"
+
+# Optional: App Service Plan Configuration
+app_service_plan_sku = "S1"
