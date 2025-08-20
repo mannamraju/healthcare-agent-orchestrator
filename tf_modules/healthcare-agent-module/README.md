@@ -4,9 +4,8 @@ This Terraform module creates and configures Azure Healthcare Agent services and
 
 ## Resources Created
 
-- Azure Healthcare Agent Service Account
-- Healthcare Bot Services for each specified agent
-- Key Vault Secret for the Healthcare Agent endpoint
+- Azure HealthBot Service for each specified healthcare agent
+- Key Vault Secrets for each Healthcare Agent
 - Role assignments for users and service principals
 
 ## Usage
@@ -67,14 +66,11 @@ module "healthcare_agent" {
 
 | Name | Description |
 |------|-------------|
-| `healthcare_agent_id` | The ID of the Healthcare Agent Service Account |
-| `healthcare_agent_name` | The name of the Healthcare Agent Service Account |
-| `healthcare_agent_endpoint` | The endpoint of the Healthcare Agent Service |
-| `healthcare_agent_principal_id` | The principal ID of the Healthcare Agent Service's managed identity |
+| `healthcareAgentServiceEndpoints` | Array of Healthcare Agent Service endpoints with management portal links and key vault secret keys |
 | `healthcare_bots` | Map of created healthcare bots with their IDs |
 
 ## Notes
 
-- The Healthcare Agent Service uses a System Assigned Managed Identity by default
+- Each HealthBot service is created with its own identity and configuration
 - Role assignments can be disabled by setting `create_role_assignments` to `false`
-- The module includes a 30-second delay to allow role assignments to propagate
+- Aligns with the Bicep implementation of Microsoft.HealthBot/healthBots resources
