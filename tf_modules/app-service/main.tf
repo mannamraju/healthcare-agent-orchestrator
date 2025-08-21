@@ -2,15 +2,6 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-terraform {
-  required_providers {
-    azurerm = {
-      source  = "hashicorp/azurerm"
-      version = "~> 4.0"
-    }
-  }
-}
-
 # Data sources
 data "azurerm_client_config" "current" {}
 
@@ -56,19 +47,6 @@ resource "azurerm_linux_web_app" "main" {
     
     application_stack {
       python_version = "3.12"
-    }
-    
-    ip_restriction {
-      action = "Allow"
-      headers {
-        x_azure_fdid      = []
-        x_fd_health_probe = []
-        x_forwarded_for   = []
-        x_forwarded_host  = []
-      }
-      name        = "VNet"
-      priority    = 100
-      service_tag = "VirtualNetwork"
     }
 
     dynamic "ip_restriction" {

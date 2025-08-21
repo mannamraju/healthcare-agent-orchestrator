@@ -185,6 +185,12 @@ variable "app_service_name" {
 }
 
 # Location Configuration
+variable "resource_group_location" {
+  description = "Azure region for Resource Group deployment"
+  type        = string
+  default     = "westus"
+}
+
 variable "gpt_deployment_location" {
   description = "Azure region for OpenAI/GPT model deployment"
   type        = string
