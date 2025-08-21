@@ -24,10 +24,7 @@ provider "azurerm" {
 # Get current client configuration
 data "azurerm_client_config" "current" {}
 
-# Fetch the existing resource group
-data "azurerm_resource_group" "core" {
-  name = var.resource_group_name
-}
+# No need to fetch the resource group, we'll create our resources directly
 
 # Reference key vault as a resource
 resource "null_resource" "key_vault_reference" {
@@ -39,8 +36,8 @@ module "ai_services" {
   source = "../ai-services-module"
 
   # Core configuration
-  resource_group_name = data.azurerm_resource_group.core.name
-  location            = var.location != "" ? var.location : data.azurerm_resource_group.core.location
+  resource_group_name = var.resource_group_name
+  location            = var.location
   ai_services_name    = var.ai_services_name
   key_vault_id        = var.key_vault_id
 

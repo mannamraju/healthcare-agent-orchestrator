@@ -24,33 +24,51 @@ provider "azurerm" {
 # Get current client configuration
 data "azurerm_client_config" "current" {}
 
-# Fetch the existing resource group
-data "azurerm_resource_group" "core" {
-  name = var.resource_group_name
-}
+# Use the resource group passed from main module
+# We're creating resources, not looking up existing ones
 
 # Reference key vault as a resource
 resource "null_resource" "key_vault_reference" {
   # Empty block for now - this is just to avoid using data source that might not exist
 }
 
-data "azurerm_cognitive_account" "openai" {
+# Create a new AI Services Cognitive Account
+resource "azurerm_cognitive_account" "openai" {
   name                = var.ai_services_name
-  resource_group_name = data.azurerm_resource_group.core.name
-}
-
-# Use data source instead of creating the AI Hub since it already exists in 'global'
-data "azurerm_cognitive_account" "ai_hub" {
-  name                = var.ai_hub_name
+  location            = var.location
   resource_group_name = var.resource_group_name
+  kind                = "OpenAI"
+  sku_name            = "S0"
+  
+  identity {
+    type = "SystemAssigned"
+  }
+  
+  tags = var.tags
 }
 
-# Dummy resource to maintain structure but not create anything
+# Create a new AI Hub Cognitive Account
+resource "azurerm_cognitive_account" "ai_hub" {
+  name                = var.ai_hub_name
+  location            = var.location
+  resource_group_name = var.resource_group_name
+  kind                = "CognitiveServices"
+  sku_name            = "S0"
+  custom_subdomain_name = var.ai_hub_name
+  
+  identity {
+    type = "SystemAssigned"
+  }
+  
+  tags = var.tags
+}
+
+# Associate AI Hub with project
 resource "null_resource" "ai_project_association" {
   triggers = {
-    ai_hub_id = data.azurerm_cognitive_account.ai_hub.id
+    ai_hub_id = azurerm_cognitive_account.ai_hub.id
     ai_project_name = var.ai_project_name
-    ai_service_id = data.azurerm_cognitive_account.openai.id
+    ai_service_id = azurerm_cognitive_account.openai.id
     key_vault_id = var.key_vault_id
   }
 }

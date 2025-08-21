@@ -27,7 +27,7 @@ output "ai_hub_endpoint" {
 # App Service outputs
 output "app_service_url" {
   description = "URL of the deployed App Service"
-  value       = module.app_service.default_site_hostname
+  value       = module.app_service.hostname
 }
 
 output "app_service_name" {
@@ -38,7 +38,11 @@ output "app_service_name" {
 # Bot Service outputs
 output "bot_services" {
   description = "Information about deployed bot services"
-  value       = module.bot_services.bot_services
+  value = {
+    ids = module.bot_services.bot_ids
+    names = module.bot_services.bot_names
+    endpoints = module.bot_services.bot_endpoints
+  }
 }
 
 # Healthcare Agent outputs
@@ -68,12 +72,12 @@ output "application_insights_connection_string" {
 # Storage account outputs
 output "storage_account_name" {
   description = "Name of the deployed Storage Account"
-  value       = module.ai_hub.storage_account_name
+  value       = local.app_storage_name
 }
 
 output "storage_account_primary_endpoint" {
   description = "Primary endpoint of the deployed Storage Account"
-  value       = module.ai_hub.storage_account_primary_endpoint
+  value       = local.app_storage_blob_endpoint
 }
 
 # GPU model deployment outputs

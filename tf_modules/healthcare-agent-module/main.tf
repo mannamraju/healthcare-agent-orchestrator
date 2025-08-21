@@ -11,12 +11,8 @@ resource "azurerm_healthbot" "healthcare_agent" {
   location            = var.location
   sku_name            = var.bot_sku_name
   
-  identity {
-    type = "UserAssigned"
-    identity_ids = [
-      lookup(var.service_principal_ids, each.key, "")
-    ]
-  }
+  # Note: Azure HealthBot may not directly support identity blocks in the current provider version
+  # We'll use role assignments for managed identity integration instead
   
   tags = merge(var.tags, {
     HealthcareAgentTemplate = "MultiAgentCollaboration"
@@ -27,6 +23,10 @@ resource "azurerm_healthbot" "healthcare_agent" {
     ignore_changes = [tags]
   }
 }
+
+# Associate user-assigned managed identity with the health bot
+# This would typically be done via an explicit resource association
+# For now, we'll use role assignments only since healthbot doesn't support explicit identity association
 
 # Store Healthcare Agent secrets in Key Vault
 resource "azurerm_key_vault_secret" "healthcare_agent_secret" {
