@@ -2,15 +2,6 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-terraform {
-  required_providers {
-    azurerm = {
-      source  = "hashicorp/azurerm"
-      version = "~> 4.0"
-    }
-  }
-}
-
 # Data source for role definition
 data "azurerm_role_definition" "storage_blob_data_contributor" {
   name = "Storage Blob Data Contributor"

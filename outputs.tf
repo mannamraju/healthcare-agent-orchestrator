@@ -72,12 +72,19 @@ output "application_insights_connection_string" {
 # Storage account outputs
 output "storage_account_name" {
   description = "Name of the deployed Storage Account"
-  value       = local.app_storage_name
+  # value       = local.app_storage_name
+  value       = module.app_storage.name
 }
 
 output "storage_account_primary_endpoint" {
   description = "Primary endpoint of the deployed Storage Account"
-  value       = local.app_storage_blob_endpoint
+  # value       = local.app_storage_blob_endpoint
+  value       = module.app_storage.primary_blob_endpoint
+}
+
+output "storage_account_id" {
+  description = "Resource ID of the deployed Storage Account"
+  value       = module.app_storage.id
 }
 
 # GPU model deployment outputs

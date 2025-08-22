@@ -7,11 +7,7 @@ terraform {
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
-      version = "~> 4.0.0"  # Upgraded to v4.0+ for Azure ML native resource support
-    }
-    azuread = {
-      source  = "hashicorp/azuread"
-      version = "= 2.53.1"   # Keep the same version that was locked
+      version = ">=4.17.0"
     }
   }
 }
@@ -27,13 +23,11 @@ provider "azurerm" {
       prevent_deletion_if_contains_resources = false
     }
   }
+  storage_use_azuread = true
 }
-
-provider "azuread" {}
 
 # Data sources
 data "azurerm_client_config" "current" {}
-data "azuread_client_config" "current" {}
 
 # Local values for naming and configuration
 locals {
@@ -93,12 +87,23 @@ locals {
     Environment = var.environment_name
     Project     = "healthcare-agent-orchestrator"
   })
+
+  # Locations
+  resource_group_location           = var.resource_group_location
+  managed_identity_location         = var.managed_identity_location != "" ? var.managed_identity_location : local.resource_group_location
+  gpt_deployment_location           = var.gpt_deployment_location != "" ? var.gpt_deployment_location : local.managed_identity_location
+  key_vault_location                = var.key_vault_location != "" ? var.key_vault_location : local.resource_group_location
+  hls_deployment_location           = var.hls_deployment_location != "" ? var.hls_deployment_location : local.resource_group_location
+  storage_account_location          = var.storage_account_location != "" ? var.storage_account_location : local.resource_group_location
+  app_service_location              = var.app_service_location != "" ? var.app_service_location : local.resource_group_location
+  bot_service_location              = var.bot_service_location != "" ? var.bot_service_location : local.resource_group_location
+  healthcare_agent_service_location = var.healthcare_agent_service_location != "" ? var.healthcare_agent_service_location : local.resource_group_location
 }
 
 # Create or use existing resource group
 resource "azurerm_resource_group" "main" {
   name     = var.resource_group_name
-  location = var.app_service_location != "" ? var.app_service_location : "westus"
+  location = local.resource_group_location
 
   tags = local.common_tags
 }
@@ -110,7 +115,7 @@ module "managed_identities" {
   for_each = { for idx, agent in local.agents : agent.name => agent }
 
   name                = each.value.name
-  location            = var.managed_identity_location != "" ? var.managed_identity_location : azurerm_resource_group.main.location
+  location            = local.managed_identity_location
   resource_group_name = azurerm_resource_group.main.name
   tags                = local.common_tags
 }
@@ -127,14 +132,16 @@ locals {
 
 # AI Services
 module "ai_services" {
-  source = "./tf_modules/ai-services"
+  source = "./tf_modules/ai-services-module"
 
   ai_services_name    = local.resource_names.ai_services
-  location            = "westus" # Fixed to West US for best GPT-4o support
+  location            = local.gpt_deployment_location
   resource_group_name = azurerm_resource_group.main.name
-  key_vault_name      = local.resource_names.key_vault
   key_vault_id        = module.key_vault.id
   tags                = local.common_tags
+  # RBAC configuration
+  user_principal_id       = data.azurerm_client_config.current.object_id
+  create_role_assignments = local.create_role_assignments
   
   # Model configuration from variables
   model_name          = local.model_name
@@ -147,7 +154,7 @@ module "key_vault" {
   source = "./tf_modules/key-vault"
 
   name                = local.resource_names.key_vault
-  location            = var.key_vault_location != "" ? var.key_vault_location : azurerm_resource_group.main.location
+  location            = local.key_vault_location
   resource_group_name = azurerm_resource_group.main.name
   tags                = local.common_tags
   tenant_id           = data.azurerm_client_config.current.tenant_id
@@ -165,7 +172,7 @@ module "gpt_deployment" {
   count  = var.enable_openai ? 1 : 0
 
   resource_group_name = azurerm_resource_group.main.name
-  ai_services_id      = module.ai_services.id
+  ai_services_id      = module.ai_services.openai_account_id
   model_name          = local.model_name
   model_version       = local.model_version
   model_capacity      = var.openai_model_capacity
@@ -179,10 +186,10 @@ module "ai_hub" {
   ai_hub_name          = local.resource_names.ai_hub
   ai_project_name      = "cog-ai-prj-${var.environment_name}-${local.unique_suffix}"
   storage_account_name = local.resource_names.storage_account
-  location             = "global" # Explicitly set to global to match existing resource
+  location             = local.hls_deployment_location
   resource_group_name  = azurerm_resource_group.main.name
-  subscription_id      = data.azurerm_client_config.current.subscription_id
   ai_services_name     = local.resource_names.ai_services
+  openai_account_id    = module.ai_services.openai_account_id
   key_vault_name       = local.resource_names.key_vault
   key_vault_id         = module.key_vault.id
   key_vault_uri        = module.key_vault.uri
@@ -199,7 +206,7 @@ module "hls_models" {
   source = "./tf_modules/hls-models"
   count  = local.has_hls_model_endpoints ? 0 : 1
 
-  location            = var.hls_deployment_location != "" ? var.hls_deployment_location : azurerm_resource_group.main.location
+  location            = local.hls_deployment_location
   resource_group_name = azurerm_resource_group.main.name
   workspace_name      = var.existing_ai_workspace_name != "" ? var.existing_ai_workspace_name : module.ai_hub.ai_hub_name
   instance_type       = var.instance_type
@@ -207,45 +214,32 @@ module "hls_models" {
 }
 
 # App Storage Account - Bypass module entirely and just create the values we need
-locals {
-  app_storage_name = local.resource_names.app_storage_account
-  app_storage_id = "/subscriptions/${data.azurerm_client_config.current.subscription_id}/resourceGroups/${azurerm_resource_group.main.name}/providers/Microsoft.Storage/storageAccounts/${local.app_storage_name}"
-  app_storage_blob_endpoint = "https://${local.app_storage_name}.blob.core.windows.net/"
+# locals {
+#   app_storage_name = local.resource_names.app_storage_account
+#   app_storage_id = "/subscriptions/${data.azurerm_client_config.current.subscription_id}/resourceGroups/${azurerm_resource_group.main.name}/providers/Microsoft.Storage/storageAccounts/${local.app_storage_name}"
+#   app_storage_blob_endpoint = "https://${local.app_storage_name}.blob.core.windows.net/"
   
-  # These are the names of containers we assume exist in the storage account
-  app_storage_containers = {
-    chat_artifacts = "chat-artifacts"
-    chat_sessions = "chat-sessions"
-    patient_data = "patient-data"
-  }
-}
+#   # These are the names of containers we assume exist in the storage account
+#   app_storage_containers = {
+#     chat_artifacts = "chat-artifacts"
+#     chat_sessions = "chat-sessions"
+#     patient_data = "patient-data"
+#   }
+# }
+## App Storage Account
+module "app_storage" {
+  source              = "./tf_modules/storage-account"
+  name                = local.resource_names.app_storage_account
+  location            = local.storage_account_location
+  resource_group_name = azurerm_resource_group.main.name
+  tags                = local.common_tags
+  shared_access_key_enabled = var.storage_shared_access_key_enabled
 
-# Use role assignment directly without going through module
-resource "azurerm_role_assignment" "app_storage_user" {
-  count = var.my_principal_id != "" ? 1 : 0
-
-  scope                = local.app_storage_id
-  role_definition_name = "Storage Blob Data Contributor"
-  principal_id         = var.my_principal_id
-  principal_type       = var.my_principal_type
-  
-  # Add lifecycle block to prevent errors if already exists
-  lifecycle {
-    ignore_changes = [scope, principal_id]
-  }
-}
-
-# Use count=0 to disable since the assignment already exists
-resource "azurerm_role_assignment" "app_storage_msi" {
-  count                = 0
-  scope                = local.app_storage_id
-  role_definition_name = "Storage Blob Data Contributor"
-  principal_id         = values(module.managed_identities)[0].principal_id
-  principal_type       = "ServicePrincipal"
-  
-  # Add lifecycle block to ignore errors if the role assignment already exists
-  lifecycle {
-    ignore_changes = [scope, principal_id]
+  # Grant access to user and managed identities
+  user_principal_id   = var.my_principal_id
+  user_principal_type = var.my_principal_type
+  service_principal_ids = {
+    for k, v in module.managed_identities : k => v.principal_id
   }
 }
 
@@ -254,14 +248,14 @@ module "app_service" {
   source = "./tf_modules/app-service"
 
   name                = local.resource_names.app_service
-  location            = var.app_service_location != "" ? var.app_service_location : azurerm_resource_group.main.location
+  location            = local.app_service_location
   resource_group_name = azurerm_resource_group.main.name
   tags                = local.common_tags
 
   app_service_plan_id        = module.app_service_plan.id
   key_vault_id               = module.key_vault.id
   key_vault_uri              = module.key_vault.vault_uri
-  app_blob_storage_endpoint  = local.app_storage_blob_endpoint
+  app_blob_storage_endpoint  = module.app_storage.primary_blob_endpoint
   ai_project_name            = module.ai_hub.ai_hub_name
   ai_project_connection_string = "azureml://subscriptions/${data.azurerm_client_config.current.subscription_id}/resourceGroups/${var.resource_group_name}/providers/Microsoft.CognitiveServices/accounts/${module.ai_hub.ai_hub_name}"
 
@@ -306,7 +300,7 @@ module "virtual_network" {
   source = "./tf_modules/network-module"
 
   vnet_name          = var.vnet_name != "" ? var.vnet_name : "vnet-${var.environment_name}-${local.unique_suffix}"
-  location           = var.app_service_location != "" ? var.app_service_location : azurerm_resource_group.main.location
+  location           = local.app_service_location
   resource_group_name = azurerm_resource_group.main.name
   vnet_address_prefixes = [var.vnet_address_space]
   app_service_subnet_prefix = var.subnet_prefix
@@ -318,7 +312,7 @@ module "app_insights" {
   source = "./tf_modules/application-insights"
 
   app_insights_name    = "appi-${var.environment_name}-${local.unique_suffix}"
-  location            = var.app_service_location != "" ? var.app_service_location : azurerm_resource_group.main.location
+  location            = local.resource_group_location
   resource_group_name = azurerm_resource_group.main.name
   tags                = local.common_tags
   
@@ -332,7 +326,7 @@ module "app_service_plan" {
   source = "./tf_modules/app-service-plan"
 
   name                = local.resource_names.app_service_plan
-  location            = var.app_service_location != "" ? var.app_service_location : azurerm_resource_group.main.location
+  location            = local.app_service_location
   resource_group_name = azurerm_resource_group.main.name
   tags                = local.common_tags
   sku_name            = var.app_service_plan_sku != "" ? var.app_service_plan_sku : "S1"  # Use S1 as default
@@ -347,7 +341,7 @@ module "fhir_service" {
   
   workspace_name      = replace("ahds${var.environment_name}${local.unique_suffix}", "-", "")
   fhir_service_name   = replace("fhir${var.environment_name}${local.unique_suffix}", "-", "")
-  location            = azurerm_resource_group.main.location
+  location            = local.resource_group_location
   resource_group_name = azurerm_resource_group.main.name
   tenant_id           = data.azurerm_client_config.current.tenant_id
   data_contributors   = [{
@@ -368,7 +362,7 @@ module "healthcare_agent" {
 
   healthcare_agent_name = "hao-agent-${var.environment_name}"
   environment_name      = var.environment_name
-  location              = var.healthcare_agent_service_location != "" ? var.healthcare_agent_service_location : azurerm_resource_group.main.location
+  location              = local.healthcare_agent_service_location
   resource_group_name   = azurerm_resource_group.main.name
   tags                  = local.common_tags
 
@@ -398,7 +392,7 @@ module "healthcare_agent" {
 module "bot_services" {
   source = "./tf_modules/bot-service"
 
-  location            = "westus"  # Bot Service requires specific regions: global, westeurope, westus, centralindia
+  location            = local.bot_service_location
   resource_group_name = azurerm_resource_group.main.name
   app_backend_hostname = module.app_service.hostname
   tenant_id           = data.azurerm_client_config.current.tenant_id
