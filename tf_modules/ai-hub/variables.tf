@@ -1,11 +1,8 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
 # Variables for AI Hub deployment
 
 # Core Configuration
-variable "subscription_id" {
-  description = "Azure Subscription ID where resources will be deployed"
-  type        = string
-  default     = "69642945-f464-4724-ba83-205eecbe5937"
-}
 
 variable "resource_group_name" {
   description = "Name of the existing resource group"
@@ -77,6 +74,11 @@ variable "store_connection_in_key_vault" {
   description = "Whether to store AI Hub connection information in Key Vault"
   type        = bool
   default     = true
+}
+
+variable "openai_account_id" {
+  description = "Existing OpenAI Cognitive Account ID"
+  type        = string
 }
 
 # Security configuration

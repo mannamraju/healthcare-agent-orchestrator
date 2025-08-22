@@ -2,15 +2,6 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-terraform {
-  required_providers {
-    azurerm = {
-      source  = "hashicorp/azurerm"
-      version = "~> 4.0"
-    }
-  }
-}
-
 # Data source for role definition
 data "azurerm_role_definition" "storage_blob_data_contributor" {
   name = "Storage Blob Data Contributor"
@@ -30,25 +21,25 @@ resource "azurerm_storage_account" "main" {
   https_traffic_only_enabled     = true
   min_tls_version               = "TLS1_2"
   allow_nested_items_to_be_public = false
-  shared_access_key_enabled     = true # Setting to true to avoid authentication issues
+  shared_access_key_enabled     = var.shared_access_key_enabled
 }
 
 # Blob containers
 resource "azurerm_storage_container" "chat_artifacts" {
   name                  = "chat-artifacts"
-  storage_account_name  = azurerm_storage_account.main.name
+  storage_account_id    = azurerm_storage_account.main.id
   container_access_type = "private"
 }
 
 resource "azurerm_storage_container" "chat_sessions" {
   name                  = "chat-sessions"
-  storage_account_name  = azurerm_storage_account.main.name
+  storage_account_id    = azurerm_storage_account.main.id
   container_access_type = "private"
 }
 
 resource "azurerm_storage_container" "patient_data" {
   name                  = "patient-data"
-  storage_account_name  = azurerm_storage_account.main.name
+  storage_account_id    = azurerm_storage_account.main.id
   container_access_type = "private"
 }
 

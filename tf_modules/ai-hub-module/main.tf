@@ -1,5 +1,17 @@
 # AI Hub Module for Healthcare Agent Orchestrator
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
 # This module creates or references Azure AI Hub for Healthcare Agent Orchestrator
+
+terraform {
+  required_version = ">= 1.0.0"
+  required_providers {
+    time = {
+      source  = "hashicorp/time"
+      version = "~> 0.9.0"
+    }
+  }
+}
 
 # Create the AI Hub / Cognitive Services Account
 resource "azurerm_cognitive_account" "ai_hub" {

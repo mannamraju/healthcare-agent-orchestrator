@@ -2,15 +2,6 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-terraform {
-  required_providers {
-    azurerm = {
-      source  = "hashicorp/azurerm"
-      version = "~> 4.0"
-    }
-  }
-}
-
 # Virtual Network
 resource "azurerm_virtual_network" "main" {
   name                = var.vnet_name

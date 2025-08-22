@@ -1,5 +1,23 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
 # AI Services Module for Healthcare Agent Orchestrator
 # This module creates Azure OpenAI service and deploys models
+
+terraform {
+  required_providers {
+    time = {
+      source  = "hashicorp/time"
+      version = "~> 0.9.0"
+    }
+  }
+}
+
+# Get current client configuration
+data "azurerm_client_config" "current" {}
+
+resource "null_resource" "key_vault_reference" {
+  # Empty block for now - this is just to avoid using data source that might not exist
+}
 
 # Create the Cognitive Services account for OpenAI
 resource "azurerm_cognitive_account" "openai" {

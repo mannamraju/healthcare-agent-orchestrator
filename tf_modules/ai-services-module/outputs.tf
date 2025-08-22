@@ -1,3 +1,5 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
 # Outputs for AI Services Module
 
 output "id" {
@@ -34,4 +36,9 @@ output "model_deployment_name" {
 output "principal_id" {
   description = "Principal ID of the managed identity"
   value       = azurerm_cognitive_account.openai.identity[0].principal_id
+}
+
+output "openai_account_id" {
+  description = "ID of the Azure OpenAI Cognitive Account"
+  value       = azurerm_cognitive_account.openai.id
 }

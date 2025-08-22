@@ -1,13 +1,11 @@
 # Healthcare Agent deployment for Healthcare Agent Orchestrator
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
 # This configuration uses the healthcare-agent-module to deploy Healthcare Agent services
 
 terraform {
   required_version = ">= 1.0.0"
   required_providers {
-    azurerm = {
-      source  = "hashicorp/azurerm"
-      version = "~> 4.0.0"
-    }
     time = {
       source  = "hashicorp/time"
       version = "~> 0.9.0"

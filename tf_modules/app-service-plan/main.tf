@@ -2,15 +2,6 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-terraform {
-  required_providers {
-    azurerm = {
-      source  = "hashicorp/azurerm"
-      version = "~> 4.0"
-    }
-  }
-}
-
 # Linux App Service Plan
 resource "azurerm_service_plan" "main" {
   name                = var.name

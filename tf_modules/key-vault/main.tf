@@ -2,15 +2,6 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-terraform {
-  required_providers {
-    azurerm = {
-      source  = "hashicorp/azurerm"
-      version = "~> 4.0"
-    }
-  }
-}
-
 # Data source for role definition
 data "azurerm_role_definition" "key_vault_secrets_officer" {
   name = "Key Vault Secrets Officer"
