@@ -24,6 +24,17 @@ output "ai_hub_endpoint" {
   value       = module.ai_hub.ai_hub_endpoint
 }
 
+# AI Project outputs
+output "ai_project_connection_string" {
+  description = "Connection string for the Azure AI Project (used by the app)"
+  value       = module.ai_hub.ai_project_connection_string
+}
+
+output "ai_project_discovery_url" {
+  description = "Discovery URL for the Azure AI Project"
+  value       = module.ai_hub.ai_project_discovery_url
+}
+
 # App Service outputs
 output "app_service_url" {
   description = "URL of the deployed App Service"
@@ -45,6 +56,11 @@ output "bot_services" {
   }
 }
 
+output "bot_id_by_name" {
+  description = "Map of Bot Service name to its client/application ID"
+  value       = { for k in keys(module.bot_services.bot_names) : module.bot_services.bot_names[k] => module.bot_services.bot_ids[k] }
+}
+
 # Healthcare Agent outputs
 output "healthcare_agent_endpoints" {
   description = "Endpoints for the Healthcare Agent services"
@@ -60,6 +76,11 @@ output "key_vault_uri" {
 output "key_vault_name" {
   description = "Name of the deployed Key Vault"
   value       = module.key_vault.name
+}
+
+output "key_vault_id" {
+  description = "Resource ID of the deployed Key Vault"
+  value       = module.key_vault.id
 }
 
 # Application Insights outputs
@@ -97,4 +118,31 @@ output "model_endpoints" {
 output "fhir_service_endpoint" {
   description = "Endpoint for the FHIR service"
   value       = local.should_deploy_fhir_service ? module.fhir_service[0].endpoint : ""
+}
+
+# Virtual Network outputs
+output "vnet_id" {
+  description = "ID of the deployed Virtual Network"
+  value       = module.virtual_network.vnet_id
+}
+
+output "vnet_name" {
+  description = "Name of the deployed Virtual Network"
+  value       = module.virtual_network.vnet_name
+}
+
+output "app_service_subnet_id" {
+  description = "ID of the subnet used for App Service integration"
+  value       = module.virtual_network.app_service_subnet_id
+}
+
+# Azure OpenAI endpoint aliases (for parity with app variables and Bicep outputs)
+output "azure_openai_api_endpoint" {
+  description = "Alias of the Azure OpenAI endpoint (same as ai_services_endpoint)"
+  value       = module.ai_services.endpoint
+}
+
+output "azure_openai_endpoint" {
+  description = "Alias of the Azure OpenAI endpoint for compatibility"
+  value       = module.ai_services.endpoint
 }

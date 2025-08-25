@@ -29,6 +29,23 @@ variable "scenario" {
   default     = "default"
 }
 
+# Clinical notes configuration
+variable "clinical_notes_source" {
+  description = "Source for clinical notes (blob, fhir, or fabric)"
+  type        = string
+  default     = "blob"
+  validation {
+    condition     = contains(["blob", "fhir", "fabric"], var.clinical_notes_source)
+    error_message = "clinical_notes_source must be one of: blob, fhir, fabric."
+  }
+}
+
+variable "fhir_service_endpoint" {
+  description = "Existing FHIR service endpoint to use (skip deployment if provided)"
+  type        = string
+  default     = ""
+}
+
 # Virtual Network Variables
 variable "vnet_name" {
   description = "Name of the virtual network"
@@ -110,16 +127,23 @@ variable "openai_model_sku" {
   }
 }
 
-variable "reasoning_model_endpoint_override" {
-  description = "Alternative endpoint for the reasoning model (leave empty to use default AI Services endpoint)"
-  type        = string
-  default     = ""
+## App access allowlists (prefer list inputs in Terraform)
+variable "additional_allowed_ips" {
+  description = "Additional public IPv4/CIDR addresses to allow through App Service access restrictions"
+  type        = list(string)
+  default     = []
 }
 
-variable "reasoning_model_deployment_name_override" {
-  description = "Alternative deployment name for the reasoning model (leave empty to use same as main model)"
-  type        = string
-  default     = ""
+variable "additional_allowed_tenant_ids" {
+  description = "Additional Azure AD tenant IDs allowed by the application (used by app auth layer)"
+  type        = list(string)
+  default     = []
+}
+
+variable "additional_allowed_user_ids" {
+  description = "Additional Azure AD user object IDs allowed by the application (used by app auth layer)"
+  type        = list(string)
+  default     = []
 }
 
 # AI Workspace Configuration

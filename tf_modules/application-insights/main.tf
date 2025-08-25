@@ -6,6 +6,7 @@ resource "azurerm_application_insights" "app_insights" {
   location            = var.location
   resource_group_name = var.resource_group_name
   application_type    = "web"
+  local_authentication_disabled = true
   # Commenting out workspace_id as it can't be removed once set
   # workspace_id        = var.log_analytics_workspace_id
   retention_in_days   = 90

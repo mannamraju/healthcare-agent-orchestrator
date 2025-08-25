@@ -19,6 +19,29 @@ locals {
   bot_ids = {
     for name, identity in var.managed_identities : name => identity.client_id
   }
+
+  # Microsoft 365/Teams and related IP ranges for allowlist
+  microsoft365_ip_ranges = [
+    "52.112.0.0/14",
+    "52.122.0.0/15",
+    "52.108.0.0/14",
+    "13.107.140.6/32",
+    "20.190.128.0/18",
+    "40.126.0.0/18",
+    "20.20.32.0/19",
+    "20.231.128.0/19",
+    "13.107.136.0/22",
+    "40.108.128.0/17",
+    "52.104.0.0/14",
+    "104.146.128.0/17",
+    "150.171.40.0/22",
+    "40.92.0.0/15",
+    "40.107.0.0/16",
+    "52.100.0.0/14",
+    "104.47.0.0/17"
+  ]
+
+  allowlisted_ips = concat(local.microsoft365_ip_ranges, var.additional_allowed_ips)
 }
 
 # App Service
@@ -44,24 +67,23 @@ resource "azurerm_linux_web_app" "main" {
     always_on         = true
     http2_enabled     = true
     app_command_line  = "gunicorn app:app"
+    vnet_route_all_enabled = true
+    ip_restriction_default_action = "Deny"
+    scm_ip_restriction_default_action = "Allow"
     
     application_stack {
       python_version = "3.12"
     }
 
+
+    # Default-deny posture with explicit allowlist
     dynamic "ip_restriction" {
-      for_each = var.additional_allowed_ips
+      for_each = { for idx, ip in local.allowlisted_ips : ip => idx }
       content {
-        ip_address = ip_restriction.value
-        name       = "AllowedIP-${ip_restriction.key}"
-        priority   = 200 + ip_restriction.key
+        name       = "Allow-${replace(ip_restriction.key, "/", "-")}"
+        ip_address = ip_restriction.key
+        priority   = 1000 + ip_restriction.value
         action     = "Allow"
-        headers {
-          x_azure_fdid      = []
-          x_fd_health_probe = []
-          x_forwarded_for   = []
-          x_forwarded_host  = []
-        }
       }
     }
   }
@@ -72,6 +94,8 @@ resource "azurerm_linux_web_app" "main" {
     "MicrosoftAppType"                            = "UserAssignedMSI"
     "AZURE_CLIENT_ID"                            = values(var.managed_identities)[0].client_id
     "MicrosoftAppTenantId"                       = data.azurerm_client_config.current.tenant_id
+    "ADDITIONAL_ALLOWED_TENANT_IDS"              = jsonencode(var.additional_allowed_tenant_ids)
+    "ADDITIONAL_ALLOWED_USER_IDS"                = jsonencode(var.additional_allowed_user_ids)
     "AZURE_AI_PROJECT_CONNECTION_STRING"         = var.ai_project_connection_string
     "AZURE_OPENAI_API_ENDPOINT"                  = var.openai_endpoint
     "AZURE_OPENAI_ENDPOINT"                      = var.openai_endpoint

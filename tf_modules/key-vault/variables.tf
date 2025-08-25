@@ -48,3 +48,9 @@ variable "graph_rag_subscription_key" {
   default     = ""
   sensitive   = true
 }
+
+variable "allowed_subnet_ids" {
+  description = "List of subnet IDs allowed to access the Key Vault (VNet rules)"
+  type        = list(string)
+  default     = []
+}

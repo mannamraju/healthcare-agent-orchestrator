@@ -23,11 +23,12 @@ resource "azurerm_key_vault" "main" {
   enabled_for_template_deployment = false
   soft_delete_retention_days    = 90
   purge_protection_enabled      = false
-  public_network_access_enabled = true
+  public_network_access_enabled = false
 
   network_acls {
     bypass         = "AzureServices"
-    default_action = "Allow"
+    default_action = "Deny"
+    virtual_network_subnet_ids = var.allowed_subnet_ids
   }
 }
 
