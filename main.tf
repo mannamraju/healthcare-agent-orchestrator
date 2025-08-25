@@ -9,6 +9,7 @@ terraform {
       source  = "hashicorp/azurerm"
       version = ">=4.41.0"
     }
+    # https://github.com/hashicorp/terraform-provider-azurerm/issues/25857
     azapi = {
       source  = "azure/azapi"
       version = ">= 2.6.1"
@@ -238,6 +239,7 @@ module "hls_models" {
 
   location            = local.hls_deployment_location
   resource_group_name = azurerm_resource_group.main.name
+  workspace_id        = module.ai_hub.ai_project_id
   workspace_name      = var.existing_ai_workspace_name != "" ? var.existing_ai_workspace_name : module.ai_hub.ai_project_name
   instance_type       = var.instance_type
   # If no healthcare agents provided, include radiology models by default,
