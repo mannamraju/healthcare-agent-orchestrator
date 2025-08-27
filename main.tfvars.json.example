@@ -1,0 +1,17 @@
+{
+    "subscription_id": "",
+    "resource_group_name": "",
+    "resource_group_location": "westus",
+    "environment_name": "dev",
+
+    "openai_model": "gpt-4o;2024-08-06",
+    "openai_model_capacity": 100,
+    "openai_model_sku": "GlobalStandard",
+    "enable_openai": true,
+
+    "vnet_address_space": "10.0.0.0/16",
+    "subnet_prefix": "10.0.0.0/24",
+
+    "storage_shared_access_key_enabled": false,
+    "instance_type": "Standard_NC40ads_H100_v5"
+}

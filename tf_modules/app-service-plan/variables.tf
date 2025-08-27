@@ -16,7 +16,7 @@ variable "resource_group_name" {
 variable "sku_name" {
   description = "The SKU name for the App Service Plan (e.g., S1, P1v2, P1v3)"
   type        = string
-  default     = "P1v3"
+  default     = "P1mv3"
 }
 
 variable "tags" {

@@ -16,8 +16,8 @@ if ! az account show &>/dev/null; then
 fi
 
 # Define the script and root directories
-scriptDirectory=$(dirname "$(realpath "$0")")
-rootDirectory=$(dirname "$scriptDirectory")
+scriptDirectory="$(cd "$(dirname "$0")" && pwd)"
+rootDirectory="$(dirname "$scriptDirectory")"
 
 # Define the path to your .env file
 envFilePath="$rootDirectory/src/.env"
@@ -34,7 +34,7 @@ if [ "$CLINICAL_NOTES_SOURCE" == "fhir" ]; then
     echo "CLINICAL_NOTES_SOURCE is set to \"fhir\". Uploading patient data to FHIR service..."
 
     # Check if Python is installed
-    pythonVersion=$(python -V 2>&1 | grep -Po '(?<=Python )(.+)')
+    pythonVersion=$(python -V 2>&1 | awk '{print $2}')
     if [[ -z "$pythonVersion" ]]; then
         echo "Python version 3.12 or higher is required. Please install Python and try again."
         exit 1
@@ -57,6 +57,14 @@ if [ "$CLINICAL_NOTES_SOURCE" == "fhir" ]; then
 
     # Run the Python script to upload patient data to FHIR service
     echo "  Uploading FHIR resources into the FHIR service..."
+
+    # Get tenant ID from current Azure CLI context
+    tenantId=$(az account show --query tenantId -o tsv 2>/dev/null)
+    if [ -z "$tenantId" ]; then
+        echo "Unable to determine tenant ID from current Azure CLI context."
+        exit 1
+    fi
+
     authToken=$(az account get-access-token --resource "$FHIR_SERVICE_ENDPOINT" --tenant "$tenantId" --query accessToken -o tsv)
     if [ $? -ne 0 ]; then
         echo "Failed to obtain access token for FHIR service. If you're running from a device outside of your organization, such as Github Codespace, you'll need to obtain the access token from an approved device by your organization."

@@ -364,7 +364,7 @@ module "app_service_plan" {
   location            = local.app_service_location
   resource_group_name = azurerm_resource_group.main.name
   tags                = local.common_tags
-  sku_name            = var.app_service_plan_sku != "" ? var.app_service_plan_sku : "P1v3"
+  sku_name            = var.app_service_plan_sku
   
   # Note: zone_redundancy parameter removed as it's not supported by the module
 }
