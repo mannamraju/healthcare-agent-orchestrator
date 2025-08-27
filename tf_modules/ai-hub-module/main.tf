@@ -59,9 +59,10 @@ resource "azurerm_key_vault_secret" "ai_hub_endpoint" {
 # Role assignments
 resource "azurerm_role_assignment" "ai_hub_contributor" {
   count                = 0 # Disabling for now to avoid count errors
-  scope                = data.azurerm_cognitive_account.ai_hub.id
-  role_definition_name = "Cognitive Services Contributor"
+  scope                = azurerm_cognitive_account.ai_hub.id
+  role_definition_id   = "/providers/Microsoft.Authorization/roleDefinitions/249d5a0a-d227-4cdc-b2b0-92d0d4f6e9c2" # Cognitive Services Contributor
   principal_id         = var.user_principal_id
+  principal_type       = "User"
   
   lifecycle {
     ignore_changes = [scope, principal_id]
@@ -71,9 +72,10 @@ resource "azurerm_role_assignment" "ai_hub_contributor" {
 # Service principal role assignments
 resource "azurerm_role_assignment" "service_principals" {
   for_each             = var.service_principal_ids
-  scope                = data.azurerm_cognitive_account.ai_hub.id
-  role_definition_name = "Cognitive Services User"
+  scope                = azurerm_cognitive_account.ai_hub.id
+  role_definition_id   = "/providers/Microsoft.Authorization/roleDefinitions/05b39039-e717-4e44-90f3-bfd684de6d3d" # Cognitive Services User
   principal_id         = each.value
+  principal_type       = "ServicePrincipal"
   
   lifecycle {
     ignore_changes = [scope, principal_id]

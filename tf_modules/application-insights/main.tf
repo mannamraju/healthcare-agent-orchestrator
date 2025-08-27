@@ -19,18 +19,31 @@ resource "azurerm_application_insights" "app_insights" {
   }
 }
 
+# Role Definitions (use IDs instead of names to avoid drift)
+data "azurerm_role_definition" "monitoring_metrics_publisher" {
+  name  = "Monitoring Metrics Publisher"
+  scope = "/"
+}
+
+data "azurerm_role_definition" "monitoring_contributor" {
+  name  = "Monitoring Contributor"
+  scope = "/"
+}
+
 # Role assignments for all service principals
 resource "azurerm_role_assignment" "app_insights_data_contributors" {
   count                = length(var.service_principal_ids)
   scope                = azurerm_application_insights.app_insights.id
-  role_definition_name = "Monitoring Metrics Publisher"
+  role_definition_id   = data.azurerm_role_definition.monitoring_metrics_publisher.id
   principal_id         = var.service_principal_ids[count.index]
+  principal_type       = "ServicePrincipal"
 }
 
 # Role assignment for current user
 resource "azurerm_role_assignment" "user_app_insights" {
   count                = var.user_principal_id != "" ? 1 : 0
   scope                = azurerm_application_insights.app_insights.id
-  role_definition_name = "Monitoring Contributor"
+  role_definition_id   = data.azurerm_role_definition.monitoring_contributor.id
   principal_id         = var.user_principal_id
+  principal_type       = "User"
 }

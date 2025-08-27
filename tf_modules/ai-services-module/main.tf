@@ -60,15 +60,17 @@ resource "azurerm_key_vault_secret" "openai_endpoint" {
 resource "azurerm_role_assignment" "openai_contributor" {
   count                = var.create_role_assignments ? 1 : 0
   scope                = azurerm_ai_services.ai.id
-  role_definition_name = "Cognitive Services OpenAI Contributor"
+  role_definition_id   = "/providers/Microsoft.Authorization/roleDefinitions/a001fd3d-188f-4b5d-821b-7da978bf7442" # Cognitive Services OpenAI Contributor
   principal_id         = var.user_principal_id
+  principal_type       = "User"
 }
 
 resource "azurerm_role_assignment" "service_principals" {
   for_each             = var.service_principal_ids
   scope                = azurerm_ai_services.ai.id
-  role_definition_name = "Cognitive Services OpenAI User"
+  role_definition_id   = "/providers/Microsoft.Authorization/roleDefinitions/5e0bd9bd-7ced-4fa4-a150-47c1c602d1fe" # Cognitive Services OpenAI User
   principal_id         = each.value
+  principal_type       = "ServicePrincipal"
 }
 
 # Delay resource to allow role assignments to propagate

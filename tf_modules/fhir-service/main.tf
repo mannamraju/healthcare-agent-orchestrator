@@ -32,11 +32,13 @@ resource "azurerm_healthcare_fhir_service" "fhir_service" {
 
 # RBAC role definitions for FHIR
 data "azurerm_role_definition" "fhir_data_contributor" {
-  name = "FHIR Data Contributor"
+  name  = "FHIR Data Contributor"
+  scope = "/"
 }
 
 data "azurerm_role_definition" "fhir_data_reader" {
-  name = "FHIR Data Reader"
+  name  = "FHIR Data Reader"
+  scope = "/"
 }
 
 # Assign RBAC roles when access policies are disabled

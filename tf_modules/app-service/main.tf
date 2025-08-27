@@ -66,6 +66,7 @@ resource "azurerm_linux_web_app" "main" {
   site_config {
     always_on         = true
     http2_enabled     = true
+    websockets_enabled = true
     app_command_line  = "gunicorn app:app"
     vnet_route_all_enabled = true
     ip_restriction_default_action = "Deny"
