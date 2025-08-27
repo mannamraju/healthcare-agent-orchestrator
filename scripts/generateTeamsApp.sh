@@ -9,7 +9,7 @@
 # EXAMPLE
 # ./generateTeamsApp.sh -manifestFileDirectory "/path/to/manifest" -output "/path/to/output"
 # This example generates a set of Teams app packages using the manifest file located in "/path/to/manifest" and saves the packages to "/path/to/output".
-set -e
+set -eu
 
 usage() {
     echo "Usage: $0 -manifestFileDirectory <manifestFileDirectory> -output <output>"
@@ -37,8 +37,8 @@ fi
 # Ensure the output directory is created
 mkdir -p "$output"
 
-scriptDirectory=$(dirname "$(readlink -f "$0")")
-rootDirectory=$(dirname "$scriptDirectory")
+scriptDirectory="$(cd "$(dirname "$0")" && pwd)"
+rootDirectory="$(dirname "$scriptDirectory")"
 
 azure_bots=$(azd env get-value AZURE_BOTS)
 

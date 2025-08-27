@@ -118,6 +118,12 @@ variable "additional_allowed_tenant_ids" {
   default     = []
 }
 
+variable "additional_allowed_user_ids" {
+  description = "Additional user IDs to allow for authentication (user object IDs)"
+  type        = list(string)
+  default     = []
+}
+
 variable "clinical_notes_source" {
   description = "Source for clinical notes (fhir or fabric)"
   type        = string

@@ -7,7 +7,16 @@ terraform {
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
-      version = ">=4.17.0"
+      version = ">=4.41.0"
+    }
+    # https://github.com/hashicorp/terraform-provider-azurerm/issues/25857
+    azapi = {
+      source  = "azure/azapi"
+      version = ">= 2.6.1"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = ">= 3.6.0"
     }
   }
 }
@@ -26,6 +35,26 @@ provider "azurerm" {
   storage_use_azuread = true
 }
 
+provider "azapi" {}
+
+
+# Stable random suffix for globally-unique names (e.g., Key Vault)
+resource "random_id" "kv_suffix" {
+  # 3 bytes -> 6 hex chars; short enough to keep name <= 24 chars with typical prefixes
+  byte_length = 3
+}
+
+resource "random_id" "sa_suffix" {
+  # 3 bytes -> 6 hex chars for storage account name uniqueness
+  byte_length = 3
+}
+
+resource "random_id" "ai_suffix" {
+  # 3 bytes -> 6 hex chars for Cognitive Services account uniqueness
+  byte_length = 3
+}
+
+
 # Data sources
 data "azurerm_client_config" "current" {}
 
@@ -38,22 +67,25 @@ locals {
   unique_suffix = substr(sha1("${data.azurerm_client_config.current.subscription_id}-${var.environment_name}"), 0, 3)
   
   # Role assignment control - set to false to skip creating role assignments that might already exist
-  create_role_assignments = false
+  create_role_assignments = true
+
+  # Default the user principal to the deployer if not explicitly provided
+  current_user_principal_id = coalesce(var.my_principal_id, data.azurerm_client_config.current.object_id)
   
-  # FHIR Service configuration
-  clinical_notes_source = "blob" # Can be "blob", "fhir", or "fabric"
-  should_deploy_fhir_service = local.clinical_notes_source == "fhir"
+  # Clinical notes + FHIR deployment condition (deploy only if source is fhir and no external endpoint provided)
+  clinical_notes_source      = var.clinical_notes_source
+  should_deploy_fhir_service = local.clinical_notes_source == "fhir" && var.fhir_service_endpoint == ""
 
   # Resource names with friendly parameters
   resource_names = {
     managed_identity    = var.managed_identity_name != "" ? var.managed_identity_name : "${local.abbreviations.managedIdentityUserAssignedIdentities}${var.environment_name}-${local.unique_suffix}"
     app_service_plan    = var.app_service_plan_name != "" ? var.app_service_plan_name : "${local.abbreviations.webSitesAppServiceEnvironment}${var.environment_name}-${local.unique_suffix}"
     app_service         = var.app_service_name != "" ? var.app_service_name : "${local.abbreviations.webSitesAppService}${var.environment_name}-${local.unique_suffix}"
-    ai_services         = var.ai_services_name != "" ? var.ai_services_name : "${local.abbreviations.cognitiveServicesAccounts}${var.environment_name}-${local.unique_suffix}"
+    ai_services         = var.ai_services_name != "" ? var.ai_services_name : lower("${local.abbreviations.cognitiveServicesAccounts}${var.environment_name}-${local.unique_suffix}-${random_id.ai_suffix.hex}")
     ai_hub              = var.ai_hub_name != "" ? var.ai_hub_name : "${local.abbreviations.cognitiveServicesAccounts}hub-${var.environment_name}-${local.unique_suffix}"
-    storage_account     = var.storage_account_name != "" ? var.storage_account_name : replace(replace("${local.abbreviations.storageStorageAccounts}${var.environment_name}${local.unique_suffix}", "-", ""), "_", "")
-    app_storage_account = var.app_storage_account_name != "" ? var.app_storage_account_name : replace(replace("${local.abbreviations.storageStorageAccounts}app${var.environment_name}${local.unique_suffix}", "-", ""), "_", "")
-    key_vault           = var.key_vault_name != "" ? var.key_vault_name : "${local.abbreviations.keyVaultVaults}${var.environment_name}-${local.unique_suffix}"
+    storage_account     = var.storage_account_name != "" ? var.storage_account_name : lower("${substr(replace(replace("${local.abbreviations.storageStorageAccounts}${var.environment_name}${local.unique_suffix}", "-", ""), "_", ""), 0, 24 - length(random_id.sa_suffix.hex))}${random_id.sa_suffix.hex}")
+    app_storage_account = var.app_storage_account_name != "" ? var.app_storage_account_name : lower("${substr(replace(replace("${local.abbreviations.storageStorageAccounts}app${var.environment_name}${local.unique_suffix}", "-", ""), "_", ""), 0, 24 - length(random_id.sa_suffix.hex))}${random_id.sa_suffix.hex}")
+    key_vault           = var.key_vault_name != "" ? var.key_vault_name : "${substr("${local.abbreviations.keyVaultVaults}${var.environment_name}-", 0, 24 - length(random_id.kv_suffix.hex))}${random_id.kv_suffix.hex}"
   }
 
   # Agent configuration
@@ -142,6 +174,10 @@ module "ai_services" {
   # RBAC configuration
   user_principal_id       = data.azurerm_client_config.current.object_id
   create_role_assignments = local.create_role_assignments
+  # Grant data-plane access to all user-assigned managed identities used by the App Service
+  service_principal_ids = {
+    for k, v in module.managed_identities : k => v.principal_id
+  }
   
   # Model configuration from variables
   model_name          = local.model_name
@@ -159,24 +195,14 @@ module "key_vault" {
   tags                = local.common_tags
   tenant_id           = data.azurerm_client_config.current.tenant_id
 
-  user_principal_id   = var.my_principal_id
+  user_principal_id   = local.current_user_principal_id
   user_principal_type = var.my_principal_type
   service_principal_ids = {
     for k, v in module.managed_identities : k => v.principal_id
   }
-}
 
-# OpenAI GPT Deployment
-module "gpt_deployment" {
-  source = "./tf_modules/gpt-deployment"
-  count  = var.enable_openai ? 1 : 0
-
-  resource_group_name = azurerm_resource_group.main.name
-  ai_services_id      = module.ai_services.openai_account_id
-  model_name          = local.model_name
-  model_version       = local.model_version
-  model_capacity      = var.openai_model_capacity
-  model_sku           = var.openai_model_sku
+  # Lockdown: allow only the App Service subnet
+  allowed_subnet_ids = [module.virtual_network.app_service_subnet_id]
 }
 
 # AI Hub
@@ -185,20 +211,19 @@ module "ai_hub" {
 
   ai_hub_name          = local.resource_names.ai_hub
   ai_project_name      = "cog-ai-prj-${var.environment_name}-${local.unique_suffix}"
-  storage_account_name = local.resource_names.storage_account
   location             = local.hls_deployment_location
   resource_group_name  = azurerm_resource_group.main.name
-  ai_services_name     = local.resource_names.ai_services
+  ai_services_endpoint = module.ai_services.endpoint
   openai_account_id    = module.ai_services.openai_account_id
-  key_vault_name       = local.resource_names.key_vault
   key_vault_id         = module.key_vault.id
-  key_vault_uri        = module.key_vault.uri
+  storage_account_id   = module.app_storage.id
   tags                 = local.common_tags
-  shared_access_key_enabled = var.storage_shared_access_key_enabled
+  create_role_assignments = local.create_role_assignments
   service_principal_ids = {
     for k, v in module.managed_identities : k => v.principal_id
   }
-  create_role_assignments = local.create_role_assignments
+  user_principal_id   = local.current_user_principal_id
+  user_principal_type = var.my_principal_type
 }
 
 # HLS Models - Only deploy if no model endpoints are provided
@@ -208,9 +233,12 @@ module "hls_models" {
 
   location            = local.hls_deployment_location
   resource_group_name = azurerm_resource_group.main.name
-  workspace_name      = var.existing_ai_workspace_name != "" ? var.existing_ai_workspace_name : module.ai_hub.ai_hub_name
+  workspace_id        = module.ai_hub.ai_project_id
+  workspace_name      = var.existing_ai_workspace_name != "" ? var.existing_ai_workspace_name : module.ai_hub.ai_project_name
   instance_type       = var.instance_type
-  include_radiology_models = local.has_radiology_agent
+  # If no healthcare agents provided, include radiology models by default,
+  # otherwise include only when no radiology agent is present (to provide the tool backend when missing)
+  include_radiology_models = length(local.healthcare_agents) == 0 ? true : !local.has_radiology_agent
 }
 
 # App Storage Account - Bypass module entirely and just create the values we need
@@ -236,7 +264,7 @@ module "app_storage" {
   shared_access_key_enabled = var.storage_shared_access_key_enabled
 
   # Grant access to user and managed identities
-  user_principal_id   = var.my_principal_id
+  user_principal_id   = local.current_user_principal_id
   user_principal_type = var.my_principal_type
   service_principal_ids = {
     for k, v in module.managed_identities : k => v.principal_id
@@ -256,8 +284,8 @@ module "app_service" {
   key_vault_id               = module.key_vault.id
   key_vault_uri              = module.key_vault.vault_uri
   app_blob_storage_endpoint  = module.app_storage.primary_blob_endpoint
-  ai_project_name            = module.ai_hub.ai_hub_name
-  ai_project_connection_string = "azureml://subscriptions/${data.azurerm_client_config.current.subscription_id}/resourceGroups/${var.resource_group_name}/providers/Microsoft.CognitiveServices/accounts/${module.ai_hub.ai_hub_name}"
+  ai_project_name              = module.ai_hub.ai_project_name
+  ai_project_connection_string = module.ai_hub.ai_project_connection_string
 
   managed_identities = local.all_identities
   openai_endpoint    = module.ai_services.endpoint
@@ -265,8 +293,8 @@ module "app_service" {
   # Optionally use separate reasoning model endpoint
   openai_endpoint_reasoning_model = var.reasoning_model_endpoint != "" ? var.reasoning_model_endpoint : module.ai_services.endpoint
   
-  deployment_name       = var.enable_openai ? var.openai_model : ""
-  deployment_name_reasoning_model = var.reasoning_model_deployment_name
+  deployment_name       = module.ai_services.model_deployment_name
+  deployment_name_reasoning_model = var.reasoning_model_deployment_name != "" ? var.reasoning_model_deployment_name : module.ai_services.model_deployment_name
   auth_client_id        = var.auth_client_id
   graph_rag_subscription_key = var.graph_rag_subscription_key
   
@@ -281,12 +309,13 @@ module "app_service" {
   
   # Network integration
   subnet_id = module.virtual_network.app_service_subnet_id
-  additional_allowed_ips = []
-  additional_allowed_tenant_ids = []
+  additional_allowed_ips = var.additional_allowed_ips
+  additional_allowed_tenant_ids = var.additional_allowed_tenant_ids
+  additional_allowed_user_ids   = var.additional_allowed_user_ids
   
   # Clinical notes settings
   clinical_notes_source = local.clinical_notes_source
-  fhir_service_endpoint = local.should_deploy_fhir_service ? module.fhir_service[0].endpoint : ""
+  fhir_service_endpoint = var.fhir_service_endpoint != "" ? var.fhir_service_endpoint : (local.should_deploy_fhir_service ? module.fhir_service[0].endpoint : "")
   fabric_user_data_function_endpoint = ""
 
   depends_on = [
@@ -318,7 +347,7 @@ module "app_insights" {
   
   # Access control
   service_principal_ids = [for k, v in local.all_identities : v.principal_id]
-  user_principal_id     = var.my_principal_id
+  user_principal_id     = local.current_user_principal_id
 }
 
 # App Service Plan
@@ -329,7 +358,7 @@ module "app_service_plan" {
   location            = local.app_service_location
   resource_group_name = azurerm_resource_group.main.name
   tags                = local.common_tags
-  sku_name            = var.app_service_plan_sku != "" ? var.app_service_plan_sku : "S1"  # Use S1 as default
+  sku_name            = var.app_service_plan_sku
   
   # Note: zone_redundancy parameter removed as it's not supported by the module
 }
@@ -345,7 +374,7 @@ module "fhir_service" {
   resource_group_name = azurerm_resource_group.main.name
   tenant_id           = data.azurerm_client_config.current.tenant_id
   data_contributors   = [{
-    id   = coalesce(var.my_principal_id, data.azurerm_client_config.current.object_id)
+    id   = local.current_user_principal_id
     type = var.my_principal_type
   }]
   data_readers       = [{
@@ -353,6 +382,11 @@ module "fhir_service" {
     type = "ServicePrincipal"
   }]
   tags               = local.common_tags
+
+  # Prefer RBAC; keep access policies disabled unless explicitly needed
+  use_access_policies       = false
+  rbac_data_contributor_ids = [local.current_user_principal_id]
+  rbac_data_reader_ids      = [for k, v in local.all_identities : v.principal_id]
 }
 
 # Healthcare Agent Service - only deploy if there are healthcare agents
@@ -377,7 +411,7 @@ module "healthcare_agent" {
   
   # Role assignments
   create_role_assignments = local.create_role_assignments
-  user_principal_id       = var.my_principal_id
+  user_principal_id       = local.current_user_principal_id
   ai_hub_principal_id     = module.ai_hub.ai_hub_principal_id
   openai_principal_id     = module.ai_services.principal_id
   

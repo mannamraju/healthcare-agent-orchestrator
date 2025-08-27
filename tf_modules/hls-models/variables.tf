@@ -3,6 +3,12 @@ variable "workspace_name" {
   type        = string
 }
 
+variable "workspace_id" {
+  description = "The full resource ID of the Azure ML workspace (AI Project). Prefer using this over name to avoid lookup/race conditions."
+  type        = string
+  default     = ""
+}
+
 variable "location" {
   description = "The Azure region where the HLS models should be deployed"
   type        = string

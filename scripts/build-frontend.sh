@@ -1,7 +1,7 @@
 #!/bin/bash
-# Build script for the React frontend
+# Build script for the React frontend (works with azd or Terraform)
 
-set -e # Exit on error
+set -euo pipefail
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
@@ -15,7 +15,7 @@ echo "Getting environment variables from azd..."
 eval "$(azd env get-values)"
 
 # Check if frontend build is disabled
-if [ "$DISABLE_FRONT_END" = "true" ]; then
+if [ "${DISABLE_FRONT_END:-}" = "true" ]; then
     echo "Frontend build is disabled (DISABLE_FRONT_END=true). Skipping frontend build."
     exit 0
 fi
@@ -36,7 +36,11 @@ fi
 cd "$DEMOCLIENT_DIR"
 
 echo "Installing frontend dependencies..."
-npm install
+if [ -f package-lock.json ]; then
+    npm ci
+else
+    npm install
+fi
 
 # Create .env.production file with Vite environment variables
 echo "Creating .env.production with environment variables..."

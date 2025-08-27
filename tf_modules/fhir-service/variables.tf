@@ -47,6 +47,24 @@ variable "data_readers" {
   default     = []
 }
 
+variable "use_access_policies" {
+  description = "Whether to use legacy access policy object IDs (true) or rely on role assignments (false)"
+  type        = bool
+  default     = true
+}
+
+variable "rbac_data_contributor_ids" {
+  description = "Principal IDs to assign FHIR Data Contributor (used when use_access_policies=false)"
+  type        = list(string)
+  default     = []
+}
+
+variable "rbac_data_reader_ids" {
+  description = "Principal IDs to assign FHIR Data Reader (used when use_access_policies=false)"
+  type        = list(string)
+  default     = []
+}
+
 variable "tags" {
   description = "Tags to apply to all resources"
   type        = map(string)

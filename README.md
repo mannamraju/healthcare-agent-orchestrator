@@ -177,7 +177,7 @@ openai_model_sku             = "GlobalStandard"
 ```
 ├── tf_modules/                # Terraform modules for each component
 │   ├── ai-hub/                # AI Hub configuration
-│   ├── ai-services/           # AI Services setup
+│   ├── ai-services-module/    # AI Services setup
 │   ├── app-service/           # App Service configuration
 │   ├── bot-service/           # Bot Service setup
 │   ├── healthcare-agent-module/ # Healthcare agent implementation

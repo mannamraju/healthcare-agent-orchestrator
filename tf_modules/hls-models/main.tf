@@ -2,6 +2,15 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
+terraform {
+  required_providers {
+    azapi = {
+      source = "azure/azapi"
+      version = ">= 2.0.0"
+    }
+  }
+}
+
 # Local values
 locals {
   # Default instance type if not provided
@@ -19,10 +28,6 @@ locals {
       instance_type = local.actual_instance_type
       endpoint_name = "cxr-endpoint-${local.postfix}"
       deployment_name = "cxr-deployment-${local.postfix}"
-      scale_settings = {
-        min_instances = 1
-        max_instances = 5
-      }
     }
   ] : []
 
@@ -32,62 +37,88 @@ locals {
   } : {}
 }
 
-# For real production deployments, we would use azurerm provider resources directly
-# However, since azurerm_machine_learning_online_endpoint is not available in v4.0,
-# we'll use a null_resource with local-exec to deploy using Azure CLI
-resource "null_resource" "hls_model_deployment" {
-  count = length(local.models)
+# Client/subscription context for building workspace parent IDs
+data "azurerm_client_config" "current" {}
 
-  triggers = {
-    model_name       = local.models[count.index].name
-    model_id         = local.models[count.index].model_id
-    instance_type    = local.models[count.index].instance_type
-    endpoint_name    = local.models[count.index].endpoint_name
-    deployment_name  = local.models[count.index].deployment_name
-    workspace_name   = var.workspace_name
-    resource_group   = var.resource_group_name
-    location         = var.location
+
+## AzAPI-based provisioning for ML managed online endpoints and deployments
+## NOTE: This was previously attempted and hit schema validation issues around endpointComputeType/traffic.
+## Restoring here verbatim so we can iterate and fix with live debugging.
+
+# Managed Online Endpoint
+resource "azapi_resource" "ml_online_endpoint" {
+  count     = length(local.models)
+  type      = "Microsoft.MachineLearningServices/workspaces/onlineEndpoints@2024-10-01"
+  name      = local.models[count.index].endpoint_name
+  parent_id = var.workspace_id
+
+  body = {
+    identity = {
+        type = "SystemAssigned"
+      }
+    location   = var.location
+    properties = {
+      # AAD-only auth for endpoint
+      authMode             = "AADToken"
+      publicNetworkAccess  = "Enabled"
+      # Optional description/displayName if desired
+      description          = local.models[count.index].display_name
+    }
+  }
+}
+
+# Managed Online Deployment
+resource "azapi_resource" "ml_online_deployment" {
+  count     = length(local.models)
+  type      = "Microsoft.MachineLearningServices/workspaces/onlineEndpoints/deployments@2024-10-01"
+  name      = local.models[count.index].deployment_name
+  parent_id = azapi_resource.ml_online_endpoint[count.index].id
+
+  # Known area of contention: exact schema for model/env references and scaleSettings
+  body = {
+    location   = var.location
+    sku = {
+      name = "Default"
+      tier = "Standard"
+      capacity = 1
+    }
+    properties = {
+      endpointComputeType = "Managed"
+
+      model = local.models[count.index].model_id
+
+      # Basic sizing
+      instanceType  = local.models[count.index].instance_type
+
+      # Optional scale settings (some API versions expect different shapes)
+      scaleSettings = {
+        # Target utilization autoscaling
+        scaleType = "Default"
+      }
+    }
   }
 
-  # First, ensure the workspace exists (would be created by the AI Hub module)
+  depends_on = [
+    azapi_resource.ml_online_endpoint
+  ]
+}
 
-  # Create the ML online endpoint
-  provisioner "local-exec" {
-    command = <<EOF
-      az ml online-endpoint create \
-        --name ${local.models[count.index].endpoint_name} \
-        --resource-group ${var.resource_group_name} \
-        --workspace-name ${var.workspace_name} \
-        --location ${var.location} \
-        --auth-mode key
-    EOF
+# Set traffic to this deployment after creation
+resource "azapi_update_resource" "ml_endpoint_traffic" {
+  count       = length(local.models)
+  type        = "Microsoft.MachineLearningServices/workspaces/onlineEndpoints@2024-04-01"
+  resource_id = azapi_resource.ml_online_endpoint[count.index].id
+
+  body = {
+    properties = {
+      traffic = {
+        # Route 100% to the single deployment; name must match deployment resource
+        (local.models[count.index].deployment_name) = 100
+      }
+    }
   }
 
-  # Create the model deployment with GPU acceleration
-  provisioner "local-exec" {
-    command = <<EOF
-      az ml online-deployment create \
-        --name ${local.models[count.index].deployment_name} \
-        --endpoint-name ${local.models[count.index].endpoint_name} \
-        --resource-group ${var.resource_group_name} \
-        --workspace-name ${var.workspace_name} \
-        --model-name ${local.models[count.index].name} \
-        --model ${local.models[count.index].model_id} \
-        --instance-type ${local.models[count.index].instance_type} \
-        --instance-count ${local.models[count.index].scale_settings.min_instances} \
-        --set-default
-    EOF
-  }
-
-  # Clean up on destroy
-  provisioner "local-exec" {
-    when    = destroy
-    command = <<EOF
-      az ml online-endpoint delete \
-        --name ${self.triggers.endpoint_name} \
-        --resource-group ${self.triggers.resource_group} \
-        --workspace-name ${self.triggers.workspace_name} \
-        --yes
-    EOF
-  }
+  depends_on = [
+    azapi_resource.ml_online_deployment
+  ]
 }

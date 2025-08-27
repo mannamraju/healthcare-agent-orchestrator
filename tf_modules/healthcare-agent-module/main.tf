@@ -47,8 +47,9 @@ resource "azurerm_key_vault_secret" "healthcare_agent_secret" {
 resource "azurerm_role_assignment" "service_principals" {
   for_each             = var.service_principal_ids
   scope                = azurerm_healthbot.healthcare_agent[each.key].id
-  role_definition_name = "Contributor"
+  role_definition_id   = "/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c" # Contributor
   principal_id         = each.value
+  principal_type       = "ServicePrincipal"
   
   # Add lifecycle to prevent destroy and ignore changes
   lifecycle {

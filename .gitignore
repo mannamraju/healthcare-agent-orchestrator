@@ -44,11 +44,8 @@ terraform-*.json
 .terraform.d/
 
 # Scripts
-*.ps1
-*.sh
 *.cmd
 *.bat
-scripts/
 bash/
 tools/
 

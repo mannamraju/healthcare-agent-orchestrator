@@ -4,7 +4,8 @@
 
 # Data source for role definition
 data "azurerm_role_definition" "storage_blob_data_contributor" {
-  name = "Storage Blob Data Contributor"
+  name  = "Storage Blob Data Contributor"
+  scope = "/"
 }
 
 # Instead of accessing the storage account directly, we'll just document
