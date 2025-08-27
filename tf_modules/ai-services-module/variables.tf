@@ -33,7 +33,7 @@ variable "openai_sku_name" {
 variable "model_deployment_name" {
   description = "Name of the model deployment"
   type        = string
-  default     = "gpt35turbo"
+  default     = ""
 }
 
 variable "model_name" {

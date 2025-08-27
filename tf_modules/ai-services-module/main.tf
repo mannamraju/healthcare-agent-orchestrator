@@ -33,7 +33,7 @@ resource "azurerm_ai_services" "ai" {
 
 // Update deployment to reference the AI Services account
 resource "azurerm_cognitive_deployment" "gpt" {
-  name                 = var.model_deployment_name
+  name                 = var.model_deployment_name != "" ? var.model_deployment_name : var.model_name
   cognitive_account_id = azurerm_ai_services.ai.id
 
   model {
@@ -60,7 +60,7 @@ resource "azurerm_key_vault_secret" "openai_endpoint" {
 resource "azurerm_role_assignment" "openai_contributor" {
   count                = var.create_role_assignments ? 1 : 0
   scope                = azurerm_ai_services.ai.id
-  role_definition_id   = "/providers/Microsoft.Authorization/roleDefinitions/a001fd3d-188f-4b5d-821b-7da978bf7442" # Cognitive Services OpenAI Contributor
+  role_definition_id   = "/subscriptions/${data.azurerm_client_config.current.subscription_id}/providers/Microsoft.Authorization/roleDefinitions/a001fd3d-188f-4b5d-821b-7da978bf7442"
   principal_id         = var.user_principal_id
   principal_type       = "User"
 }
@@ -68,7 +68,7 @@ resource "azurerm_role_assignment" "openai_contributor" {
 resource "azurerm_role_assignment" "service_principals" {
   for_each             = var.service_principal_ids
   scope                = azurerm_ai_services.ai.id
-  role_definition_id   = "/providers/Microsoft.Authorization/roleDefinitions/5e0bd9bd-7ced-4fa4-a150-47c1c602d1fe" # Cognitive Services OpenAI User
+  role_definition_id   = "/subscriptions/${data.azurerm_client_config.current.subscription_id}/providers/Microsoft.Authorization/roleDefinitions/a97b65f3-24c7-4388-baec-2e87135dc908"
   principal_id         = each.value
   principal_type       = "ServicePrincipal"
 }

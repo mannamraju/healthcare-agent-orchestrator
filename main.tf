@@ -171,6 +171,10 @@ module "ai_services" {
   # RBAC configuration
   user_principal_id       = data.azurerm_client_config.current.object_id
   create_role_assignments = local.create_role_assignments
+  # Grant data-plane access to all user-assigned managed identities used by the App Service
+  service_principal_ids = {
+    for k, v in module.managed_identities : k => v.principal_id
+  }
   
   # Model configuration from variables
   model_name          = local.model_name
@@ -196,19 +200,6 @@ module "key_vault" {
 
   # Lockdown: allow only the App Service subnet
   allowed_subnet_ids = [module.virtual_network.app_service_subnet_id]
-}
-
-# OpenAI GPT Deployment
-module "gpt_deployment" {
-  source = "./tf_modules/gpt-deployment"
-  count  = var.enable_openai ? 1 : 0
-
-  resource_group_name = azurerm_resource_group.main.name
-  ai_services_id      = module.ai_services.openai_account_id
-  model_name          = local.model_name
-  model_version       = local.model_version
-  model_capacity      = var.openai_model_capacity
-  model_sku           = var.openai_model_sku
 }
 
 # AI Hub
@@ -299,8 +290,8 @@ module "app_service" {
   # Optionally use separate reasoning model endpoint
   openai_endpoint_reasoning_model = var.reasoning_model_endpoint != "" ? var.reasoning_model_endpoint : module.ai_services.endpoint
   
-  deployment_name       = var.enable_openai ? var.openai_model : ""
-  deployment_name_reasoning_model = var.reasoning_model_deployment_name
+  deployment_name       = module.ai_services.model_deployment_name
+  deployment_name_reasoning_model = var.reasoning_model_deployment_name != "" ? var.reasoning_model_deployment_name : module.ai_services.model_deployment_name
   auth_client_id        = var.auth_client_id
   graph_rag_subscription_key = var.graph_rag_subscription_key
   
