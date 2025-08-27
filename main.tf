@@ -68,6 +68,9 @@ locals {
   
   # Role assignment control - set to false to skip creating role assignments that might already exist
   create_role_assignments = true
+
+  # Default the user principal to the deployer if not explicitly provided
+  current_user_principal_id = coalesce(var.my_principal_id, data.azurerm_client_config.current.object_id)
   
   # Clinical notes + FHIR deployment condition (deploy only if source is fhir and no external endpoint provided)
   clinical_notes_source      = var.clinical_notes_source
@@ -192,7 +195,7 @@ module "key_vault" {
   tags                = local.common_tags
   tenant_id           = data.azurerm_client_config.current.tenant_id
 
-  user_principal_id   = var.my_principal_id
+  user_principal_id   = local.current_user_principal_id
   user_principal_type = var.my_principal_type
   service_principal_ids = {
     for k, v in module.managed_identities : k => v.principal_id
@@ -219,7 +222,7 @@ module "ai_hub" {
   service_principal_ids = {
     for k, v in module.managed_identities : k => v.principal_id
   }
-  user_principal_id   = var.my_principal_id
+  user_principal_id   = local.current_user_principal_id
   user_principal_type = var.my_principal_type
 }
 
@@ -261,7 +264,7 @@ module "app_storage" {
   shared_access_key_enabled = var.storage_shared_access_key_enabled
 
   # Grant access to user and managed identities
-  user_principal_id   = var.my_principal_id
+  user_principal_id   = local.current_user_principal_id
   user_principal_type = var.my_principal_type
   service_principal_ids = {
     for k, v in module.managed_identities : k => v.principal_id
@@ -344,7 +347,7 @@ module "app_insights" {
   
   # Access control
   service_principal_ids = [for k, v in local.all_identities : v.principal_id]
-  user_principal_id     = var.my_principal_id
+  user_principal_id     = local.current_user_principal_id
 }
 
 # App Service Plan
@@ -371,7 +374,7 @@ module "fhir_service" {
   resource_group_name = azurerm_resource_group.main.name
   tenant_id           = data.azurerm_client_config.current.tenant_id
   data_contributors   = [{
-    id   = coalesce(var.my_principal_id, data.azurerm_client_config.current.object_id)
+    id   = local.current_user_principal_id
     type = var.my_principal_type
   }]
   data_readers       = [{
@@ -382,7 +385,7 @@ module "fhir_service" {
 
   # Prefer RBAC; keep access policies disabled unless explicitly needed
   use_access_policies       = false
-  rbac_data_contributor_ids = [coalesce(var.my_principal_id, data.azurerm_client_config.current.object_id)]
+  rbac_data_contributor_ids = [local.current_user_principal_id]
   rbac_data_reader_ids      = [for k, v in local.all_identities : v.principal_id]
 }
 
@@ -408,7 +411,7 @@ module "healthcare_agent" {
   
   # Role assignments
   create_role_assignments = local.create_role_assignments
-  user_principal_id       = var.my_principal_id
+  user_principal_id       = local.current_user_principal_id
   ai_hub_principal_id     = module.ai_hub.ai_hub_principal_id
   openai_principal_id     = module.ai_services.principal_id
   
