@@ -59,6 +59,22 @@ hooks:
         ./scripts/uploadPatientData.sh
       interactive: false
       continueOnError: false
+  predown:
+    windows:
+      shell: pwsh
+      run: |
+        Write-Host "Draining Azure ML endpoint traffic before destroy"
+        # Optional: Add Windows PowerShell equivalent if needed later.
+      interactive: false
+      continueOnError: true
+    posix:
+      shell: sh
+      run: |
+        echo "Executing ML endpoint traffic drain pre-destroy"
+        chmod +x ./scripts/drain_ml_endpoints.sh || true
+        ./scripts/drain_ml_endpoints.sh || true
+      interactive: false
+      continueOnError: true
 infra:
   provider: terraform
   path: .
