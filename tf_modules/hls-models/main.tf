@@ -8,10 +8,6 @@ terraform {
       source = "azure/azapi"
       version = ">= 2.0.0"
     }
-    time = {
-      source  = "hashicorp/time"
-      version = "~> 0.9.1"
-    }
   }
 }
 
@@ -69,8 +65,6 @@ resource "azapi_resource" "ml_online_endpoint" {
       description          = local.models[count.index].display_name
     }
   }
-
-  depends_on = [ time_sleep.post_endpoint_delete_pause ]
 }
 
 # Managed Online Deployment
