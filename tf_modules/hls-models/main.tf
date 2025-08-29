@@ -128,30 +128,3 @@ resource "azapi_update_resource" "ml_endpoint_traffic" {
     azapi_resource.ml_online_deployment
   ]
 }
-
-resource "time_sleep" "post_endpoint_delete_pause" {
-  count            = length(local.models)
-  destroy_duration = "90s"
-}
-
-# Remove traffic before destroying endpoint, otherwise will fail
-resource "null_resource" "ml_endpoint_drain_traffic" {
-  count = length(local.models)
-  triggers = {
-    endpoint_name = local.models[count.index].endpoint_name
-    rg = var.resource_group_name
-    ws = var.workspace_name
-  }
-  provisioner "local-exec" {
-    when = destroy
-    command = <<-EOT
-      az ml online-endpoint update \
-        --name ${self.triggers.endpoint_name} \
-        --resource-group ${self.triggers.rg} \
-        --workspace-name ${self.triggers.ws} \
-        --set traffic={}
-    EOT
-  }
-
-  depends_on = [ azapi_resource.ml_online_deployment, azapi_resource.ml_online_endpoint ]
-}
