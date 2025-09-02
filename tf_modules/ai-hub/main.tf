@@ -69,15 +69,6 @@ resource "azurerm_ai_foundry_project" "ai_project" {
   tags               = var.tags
 }
 
-# Add a delay after endpoint deletion to ensure eventual consistency
-# before proceeding with workspace deletion.
-resource "time_sleep" "post_endpoint_delete_pause" {
-  destroy_duration = "90s"
-
-  depends_on = [
-    azurerm_ai_foundry_project.ai_project
-  ]
-}
 
 resource "azurerm_container_registry" "acr" {
   name                = replace("${var.ai_hub_name}-registry", "-", "")
