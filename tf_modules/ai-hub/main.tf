@@ -9,10 +9,6 @@ terraform {
       source  = "azure/azapi"
       version = ">= 2.0.0"
     }
-    time = {
-      source  = "hashicorp/time"
-      version = "~> 0.9.1"
-    }
   }
 }
 
@@ -68,7 +64,6 @@ resource "azurerm_ai_foundry_project" "ai_project" {
   friendly_name      = var.ai_project_name
   tags               = var.tags
 }
-
 
 resource "azurerm_container_registry" "acr" {
   name                = replace("${var.ai_hub_name}-registry", "-", "")
