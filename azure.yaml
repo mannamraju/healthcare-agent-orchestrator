@@ -64,7 +64,9 @@ hooks:
       shell: pwsh
       run: |
         Write-Host "Draining Azure ML endpoint traffic before destroy"
-        # Optional: Add Windows PowerShell equivalent if needed later.
+        ./scripts/drain_ml_endpoints.ps1
+        Write-Host "Deleting Azure ML endpoints before destroy"
+        ./scripts/delete_ml_endpoints.ps1 -MaxSeconds 600 -IntervalSeconds 15
       interactive: false
       continueOnError: true
     posix:
@@ -73,6 +75,9 @@ hooks:
         echo "Executing ML endpoint traffic drain pre-destroy"
         chmod +x ./scripts/drain_ml_endpoints.sh || true
         ./scripts/drain_ml_endpoints.sh || true
+        echo "Executing ML endpoint resource deletion"
+        chmod +x ./scripts/delete_ml_endpoints.sh || true
+        ./scripts/delete_ml_endpoints.sh || true
       interactive: false
       continueOnError: true
 infra:

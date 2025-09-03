@@ -65,8 +65,6 @@ resource "azapi_resource" "ml_online_endpoint" {
       description          = local.models[count.index].display_name
     }
   }
-
-  depends_on = [ time_sleep.post_endpoint_delete_pause ]
 }
 
 # Managed Online Deployment
@@ -123,11 +121,4 @@ resource "azapi_update_resource" "ml_endpoint_traffic" {
   depends_on = [
     azapi_resource.ml_online_deployment
   ]
-}
-
-# Add a delay after endpoint deletion to ensure eventual consistency
-# before proceeding with workspace deletion.
-resource "time_sleep" "post_endpoint_delete_pause" {
-  count            = length(local.models)
-  destroy_duration = "90s"
 }
