@@ -40,7 +40,7 @@ hooks:
         if [ -z "$SCENARIO" ]; then
           echo "Setting default as default SCENARIO"
           azd env set SCENARIO default
-        fi     
+        fi
   postprovision:
     windows:
       shell: pwsh
@@ -63,6 +63,28 @@ hooks:
     windows:
       shell: pwsh
       run: |
+        $provider = ''
+        $inInfra = $false
+        Get-Content azure.yaml | ForEach-Object {
+          if ($provider) { return }
+          $line = $_
+          if ($line -match '^[\s]*#') { return }
+          if (-not $inInfra -and $line -match '^[\s]*infra:[\s]*$') { $inInfra = $true; return }
+          if ($inInfra -and $line -match '^[^\s]') { $inInfra = $false; return }
+          if ($inInfra -and $line -match '^[\s]*provider:\s*(.+)$') {
+            $cand = $Matches[1]
+            if ($cand -match '^(.*?)\s+#') { $cand = $Matches[1] }
+            $cand = $cand.Trim().Trim('"',"'")
+            $provider = $cand
+            $inInfra = $false
+          }
+        }
+        if ($provider -ne 'terraform') {
+          Write-Host "Skipping predown: provider=$provider"
+          exit 0
+        }
+
+        # (Terraform only) Place terraform destroy pre-actions below
         # TODO: Write-Host "Draining Azure ML endpoint traffic before destroy"
         # TODO: Write-Host "Deleting Azure ML endpoints before destroy"
       interactive: false
@@ -70,14 +92,37 @@ hooks:
     posix:
       shell: sh
       run: |
-        echo "Executing ML endpoint traffic drain pre-destroy"
+        provider=$(awk '
+          BEGIN{inInfra=0}
+          /^[[:space:]]*#/ {next}
+          /^[[:space:]]*infra:[[:space:]]*$/ {inInfra=1; next}
+          inInfra && /^[^[:space:]]/ {inInfra=0}
+          inInfra && /^[[:space:]]*provider:[[:space:]]*/ {
+            line=$0
+            sub(/^[[:space:]]*provider:[[:space:]]*/,"",line)
+            sub(/#.*/, "", line)        # remove inline comment
+            gsub(/"/, "", line)        # strip double quotes (avoid single quote issues)
+            sub(/^[[:space:]]+/, "", line)
+            sub(/[[:space:]]+$/, "", line)
+            print line
+            exit
+          }
+        ' azure.yaml)
+
+        if [ "$provider" != "terraform" ]; then
+          echo "Skipping predown: provider=$provider"
+          exit 0
+        fi
+        echo "Infra provider is Terraform. Proceeding with pre-destroy scripts..."
+
+        echo "Executing ML endpoint traffic drain pre-destroy (terraform)"
         chmod +x ./scripts/drain_ml_endpoints.sh || true
         ./scripts/drain_ml_endpoints.sh || true
-        echo "Executing ML endpoint resource deletion"
+        echo "Executing ML endpoint resource deletion (terraform)"
         chmod +x ./scripts/delete_ml_endpoints.sh || true
         ./scripts/delete_ml_endpoints.sh || true
       interactive: false
       continueOnError: true
-infra:
-  provider: terraform
-  path: .
+# infra:
+#   provider: terraform
+#   path: .
