@@ -9,6 +9,11 @@ if [ "$AZURE_PRINCIPAL_TYPE" == "ServicePrincipal" ]; then
     exit 0
 fi
 
+if ! command -v az &> /dev/null; then
+    echo "Azure CLI (az) is not installed. Please install it first."
+    exit 1
+fi
+
 # Check if user is logged in
 if ! az account show &>/dev/null; then
     echo "You are not logged in to Azure. Please log in and try again."
@@ -57,14 +62,14 @@ if [ "$CLINICAL_NOTES_SOURCE" == "fhir" ]; then
 
     # Run the Python script to upload patient data to FHIR service
     echo "  Uploading FHIR resources into the FHIR service..."
-
+    
     # Get tenant ID from current Azure CLI context
     tenantId=$(az account show --query tenantId -o tsv 2>/dev/null)
     if [ -z "$tenantId" ]; then
         echo "Unable to determine tenant ID from current Azure CLI context."
         exit 1
     fi
-
+    
     authToken=$(az account get-access-token --resource "$FHIR_SERVICE_ENDPOINT" --tenant "$tenantId" --query accessToken -o tsv)
     if [ $? -ne 0 ]; then
         echo "Failed to obtain access token for FHIR service. If you're running from a device outside of your organization, such as Github Codespace, you'll need to obtain the access token from an approved device by your organization."
