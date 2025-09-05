@@ -40,7 +40,7 @@ hooks:
         if [ -z "$SCENARIO" ]; then
           echo "Setting default as default SCENARIO"
           azd env set SCENARIO default
-        fi     
+        fi
   postprovision:
     windows:
       shell: pwsh
@@ -59,6 +59,21 @@ hooks:
         ./scripts/uploadPatientData.sh
       interactive: false
       continueOnError: false
-infra:
-  provider: terraform
-  path: .
+  predown:
+    windows:
+      shell: pwsh
+      run: |
+        # (Terraform only) Place terraform destroy pre-actions below
+        # TODO: Create powershell predown script that will drain traffic and delete ML endpoints
+      interactive: false
+      continueOnError: true
+    posix:
+      shell: sh
+      run: |
+        chmod +x ./scripts/predown.sh 2>/dev/null || true
+        ./scripts/predown.sh || true
+      interactive: false
+      continueOnError: true
+# infra:
+#   provider: terraform
+#   path: .
