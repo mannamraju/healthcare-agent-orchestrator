@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build script for the React frontend (works with azd or Terraform)
+# Build script for the React frontend
 
 set -euo pipefail
 

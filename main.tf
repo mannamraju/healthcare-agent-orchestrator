@@ -241,19 +241,6 @@ module "hls_models" {
   include_radiology_models = length(local.healthcare_agents) == 0 ? true : !local.has_radiology_agent
 }
 
-# App Storage Account - Bypass module entirely and just create the values we need
-# locals {
-#   app_storage_name = local.resource_names.app_storage_account
-#   app_storage_id = "/subscriptions/${data.azurerm_client_config.current.subscription_id}/resourceGroups/${azurerm_resource_group.main.name}/providers/Microsoft.Storage/storageAccounts/${local.app_storage_name}"
-#   app_storage_blob_endpoint = "https://${local.app_storage_name}.blob.core.windows.net/"
-  
-#   # These are the names of containers we assume exist in the storage account
-#   app_storage_containers = {
-#     chat_artifacts = "chat-artifacts"
-#     chat_sessions = "chat-sessions"
-#     patient_data = "patient-data"
-#   }
-# }
 ## App Storage Account
 module "app_storage" {
   source              = "./tf_modules/storage-account"
