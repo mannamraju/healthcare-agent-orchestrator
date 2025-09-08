@@ -80,7 +80,7 @@ echo "$azureBotsContent" | while IFS= read -r bot; do
         .icons.outline = ($botName + ".png")  |
         .icons.color = ($botName + ".png") |
         .webApplicationInfo.id = $botId |
-        .webApplicationInfo.resource = "api://botid-$botId"
+        .webApplicationInfo.resource = "api://botid-\($botId)"
     ')
 
     # Define the new manifest file path
