@@ -17,35 +17,6 @@ Healthcare Agent Orchestrator is a code sample to help you build an agent inte
 - Enables integration with Microsoft Teams for collaborative workflows.
 - Highlights interoperability with Azure services and AI models such as [CxrReportGen](https://ai.azure.com/explore/models/CxrReportGen/version/7/registry/azureml).
 
-## Deployment Options: Bicep and Terraform
-
-Infrastructure for this project can be provisioned using either **Bicep** (default) or **Terraform** via the Azure Developer CLI (`azd`). Unless you explicitly change the provider in `azure.yaml`, `azd up` will use the Bicep templates under the `infra/` directory. Setting `provider: terraform` instructs `azd` to use the Terraform configuration at the repository root (e.g., `main.tf`, `variables.tf`, modules under `tf_modules/`).
-
-### How to Switch Deployment Provider to Terraform
-1. Open the root file `azure.yaml`.
-2. Find (or add) the `infra` block.
-3. Set the `provider` value:
-   ```yaml
-   infra:
-     provider: terraform  # Uses main.tf and tf_modules/
-     path: .
-   ```
-4. Save the file.
-5. Run:
-   ```bash
-   azd up
-   ```
-
-### Tooling Requirements
-Install the appropriate tooling if switching:
-- Bicep: `az bicep install` (or follow Microsoft docs)
-- Terraform: Install Terraform CLI (v1.5+ recommended)
-
-> [!TIP]
-> If you switch from Terraform back to Bicep (or vice versa), consider cleaning previous state artifacts (`.terraform/`, `terraform.tfstate*`) to avoid confusion. For Terraform-managed deployments, destroying (`terraform destroy` or `azd down --purge`) before switching helps keep resource state consistent.
-
----
-
 ## Solution Architecture
 ![Solution Architecture](media/architecture.png)
 
@@ -118,10 +89,15 @@ Before deploying, verify your Azure subscription has sufficient quota and your a
 
 ### Step 2: Create an `azd` Environment & Set Variables
 
-Now use the region values you identified in [Step 1](#step-1-verify-prerequisites-quota--permissions) where you confirmed quota availability.
+### Deployment Options: Bicep and Terraform
 
-> [!NOTE]
-> Deployments use **Bicep by default**. To use Terraform instead, edit `azure.yaml` and set `infra.provider: terraform` (see [Deployment Options: Bicep and Terraform](#deployment-options-bicep-and-terraform)). Then re-run `azd up`.
+Infrastructure for this project can be provisioned using either **Bicep** (default) or **Terraform** via the Azure Developer CLI (`azd`). Unless you explicitly change the provider in `azure.yaml`, `azd up` will use the Bicep templates under the `infra/` directory. To learn more about using Terraform instead, please see the [Terraform documentation](docs/terraform.md).
+
+### Tooling Requirements
+
+- Bicep: `az bicep install` (or follow Microsoft docs)
+
+Now use the region values you identified in [Step 1](#step-1-verify-prerequisites-quota--permissions) where you confirmed quota availability.
 
 If you've identified single region for deployment, you can proceed to authentication. Otherwise, use the following table to set locations where you have quota/capacity available.
 

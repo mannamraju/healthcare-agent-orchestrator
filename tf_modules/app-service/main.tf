@@ -22,26 +22,52 @@ locals {
 
   # Microsoft 365/Teams and related IP ranges for allowlist
   microsoft365_ip_ranges = [
-    "52.112.0.0/14",
-    "52.122.0.0/15",
-    "52.108.0.0/14",
-    "13.107.140.6/32",
-    "20.190.128.0/18",
-    "40.126.0.0/18",
-    "20.20.32.0/19",
-    "20.231.128.0/19",
-    "13.107.136.0/22",
-    "40.108.128.0/17",
-    "52.104.0.0/14",
-    "104.146.128.0/17",
-    "150.171.40.0/22",
-    "40.92.0.0/15",
-    "40.107.0.0/16",
-    "52.100.0.0/14",
-    "104.47.0.0/17"
+    # Exchange Online (existing ranges)
+    "13.107.6.152/31",
+    "13.107.18.10/31", 
+    "13.107.128.0/22",
+    "23.103.160.0/20",
+    "40.96.0.0/13",
+    "40.104.0.0/15",
+    "52.96.0.0/14",
+    "131.253.33.215/32",
+    "132.245.0.0/16",
+    "150.171.32.0/22",
+    "204.79.197.215/32",
+    
+    # Microsoft Teams (CRITICAL for Teams connectivity)
+    "52.112.0.0/14",      # Teams core services & media (ID 11, 12)
+    "52.122.0.0/15",      # Teams core services & media (ID 11, 12)
+    
+    # Microsoft 365 Common & Office Online (for Teams web client)
+    "52.108.0.0/14",      # Office Online apps (ID 46)
+    "13.107.140.6/32",    # Office Online (ID 46)
+    
+    # Azure AD Authentication (required for Teams SSO)
+    "20.190.128.0/18",    # Azure AD authentication (ID 56)
+    "40.126.0.0/18",      # Azure AD authentication (ID 56)
+    "20.20.32.0/19",      # Azure AD authentication (ID 56)
+    "20.231.128.0/19",    # Azure AD authentication (ID 56)
+      
+    # SharePoint Online & OneDrive (CRITICAL for Teams file sharing)
+    "13.107.136.0/22",    # SharePoint Online core (ID 31)
+    "40.108.128.0/17",    # SharePoint Online core (ID 31)
+    "52.104.0.0/14",      # SharePoint Online core (ID 31)
+    "104.146.128.0/17",   # SharePoint Online core (ID 31)
+    "150.171.40.0/22",    # SharePoint Online core (ID 31)
+    
+    # Exchange Protection Services (for email security)
+    "40.92.0.0/15",       # Exchange Protection (ID 9, 10)
+    "40.107.0.0/16",      # Exchange Protection (ID 9, 10)
+    "52.100.0.0/14",      # Exchange Protection (ID 9, 10)
+    "104.47.0.0/17"       # Exchange Protection (ID 9, 10)
   ]
 
-  allowlisted_ips = concat(local.microsoft365_ip_ranges, var.additional_allowed_ips)
+  # Parse additional allowed IPs from comma-separated string to array
+  additional_allowed_ips_array = var.additional_allowed_ips != "" ? split(",", var.additional_allowed_ips) : []
+
+  # Combine Microsoft 365 IP ranges with additional allowed IPs
+  allowlisted_ips = concat(local.microsoft365_ip_ranges, local.additional_allowed_ips_array)
 }
 
 # App Service
@@ -94,9 +120,10 @@ resource "azurerm_linux_web_app" "main" {
   app_settings = merge({
     "MicrosoftAppType"                            = "UserAssignedMSI"
     "AZURE_CLIENT_ID"                            = values(var.managed_identities)[0].client_id
+    "AZURE_DEPLOYER_OBJECT_ID"                   = data.azurerm_client_config.current.object_id
     "MicrosoftAppTenantId"                       = data.azurerm_client_config.current.tenant_id
-    "ADDITIONAL_ALLOWED_TENANT_IDS"              = jsonencode(var.additional_allowed_tenant_ids)
-    "ADDITIONAL_ALLOWED_USER_IDS"                = jsonencode(var.additional_allowed_user_ids)
+    "ADDITIONAL_ALLOWED_TENANT_IDS"              = var.additional_allowed_tenant_ids
+    "ADDITIONAL_ALLOWED_USER_IDS"                = var.additional_allowed_user_ids
     "AZURE_AI_PROJECT_CONNECTION_STRING"         = var.ai_project_connection_string
     "AZURE_OPENAI_API_ENDPOINT"                  = var.openai_endpoint
     "AZURE_OPENAI_ENDPOINT"                      = var.openai_endpoint
@@ -111,6 +138,7 @@ resource "azurerm_linux_web_app" "main" {
     "HLS_MODEL_ENDPOINTS"                        = jsonencode(var.model_endpoints)
     "BACKEND_APP_HOSTNAME"                       = "${var.name}.azurewebsites.net"
     "SCENARIO"                                   = var.scenario
+    "CLINICAL_NOTES_SOURCE"                      = var.clinical_notes_source
     "APPLICATIONINSIGHTS_CONNECTION_STRING"      = var.application_insights_connection_string
   }, 
   # Graph RAG Key

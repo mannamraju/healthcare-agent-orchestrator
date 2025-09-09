@@ -177,9 +177,9 @@ output "APP_SERVICE_URL" {
 output "AZURE_BOTS" {
   description = "Array of bots with name and botId, used by generateTeamsApp scripts"
   value = [
-    for k in keys(module.bot_services.bot_names) : {
-      name  = module.bot_services.bot_names[k]
-      botId = module.bot_services.bot_ids[k]
+    for agent in local.agents: {
+      name  = agent.name
+      botId = module.managed_identities[agent.name].client_id
     }
   ]
 }

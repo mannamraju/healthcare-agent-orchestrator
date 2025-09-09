@@ -108,20 +108,18 @@ variable "subnet_id" {
 
 variable "additional_allowed_ips" {
   description = "Additional IPs to allow in network rules"
-  type        = list(string)
-  default     = []
+  type        = string
+  default     = ""
 }
 
 variable "additional_allowed_tenant_ids" {
   description = "Additional tenant IDs to allow for authentication"
-  type        = list(string)
-  default     = []
+  type        = string
 }
 
 variable "additional_allowed_user_ids" {
   description = "Additional user IDs to allow for authentication (user object IDs)"
-  type        = list(string)
-  default     = []
+  type        = string
 }
 
 variable "clinical_notes_source" {

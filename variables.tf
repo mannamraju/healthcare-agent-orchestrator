@@ -130,20 +130,20 @@ variable "openai_model_sku" {
 ## App access allowlists (prefer list inputs in Terraform)
 variable "additional_allowed_ips" {
   description = "Additional public IPv4/CIDR addresses to allow through App Service access restrictions"
-  type        = list(string)
-  default     = []
+  type        = string
+  default     = ""
 }
 
 variable "additional_allowed_tenant_ids" {
   description = "Additional Azure AD tenant IDs allowed by the application (used by app auth layer)"
-  type        = list(string)
-  default     = []
+  type        = string
+  default     = ""
 }
 
 variable "additional_allowed_user_ids" {
   description = "Additional Azure AD user object IDs allowed by the application (used by app auth layer)"
-  type        = list(string)
-  default     = []
+  type        = string
+  default     = ""
 }
 
 # AI Workspace Configuration

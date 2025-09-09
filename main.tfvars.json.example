@@ -1,6 +1,6 @@
 {
-    "subscription_id": "",
-    "resource_group_name": "",
+    "subscription_id": "your-subscription-id",
+    "resource_group_name": "your-resource-group",
     "resource_group_location": "westus",
     "environment_name": "dev",
 
@@ -13,5 +13,9 @@
     "subnet_prefix": "10.0.0.0/24",
 
     "storage_shared_access_key_enabled": false,
-    "instance_type": "Standard_NC40ads_H100_v5"
+    "instance_type": "Standard_NC40ads_H100_v5",
+
+    # Optional: Allow access control for all Teams users from all tenants.
+    # additional_allowed_tenant_ids = "*",
+    # additional_allowed_user_ids = "*",
 }
