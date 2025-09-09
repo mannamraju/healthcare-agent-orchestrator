@@ -25,7 +25,7 @@ Switching to Terraform will use configuration at the repository root (e.g., `mai
 
 ## Variables
 
-When using Terraform with azd, variables are configured through `main.tfvars.json`.
+When using Terraform with `azd`, variables are configured through `main.tfvars.json`.
 
 Copy `main.tfvars.json.example` to `main.tfvars.json` and update values as necessary.
 
@@ -34,4 +34,4 @@ Copy `main.tfvars.json.example` to `main.tfvars.json` and update values as neces
 
 ## Deployment
 
-Continue to follow the guidance in the [README.md](../README.md) for using azd to deploy, including creating the environment.
+Continue to follow the guidance in the [README.md](../README.md) for using `azd` to deploy, including creating the environment.
